@@ -22,6 +22,8 @@ const App: React.FC = () => {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
+  const [paymentCode, setPaymentCode] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -49,6 +51,11 @@ const App: React.FC = () => {
       setView(ViewMode.PAYMENT_SUCCESS);
       clearCart();
     } else if (path === '/payment-fail') {
+      const params = new URLSearchParams(window.location.search);
+      const errorMsg = params.get('error');
+      const errorCode = params.get('code');
+      if (errorMsg) setPaymentError(errorMsg);
+      if (errorCode) setPaymentCode(errorCode);
       setView(ViewMode.PAYMENT_FAIL);
     }
   }, []);
@@ -228,7 +235,15 @@ const App: React.FC = () => {
               <div className="text-red-500 text-4xl mt-[-5px]">✕</div>
             </div>
             <h2 className="text-4xl font-black text-black dark:text-white uppercase tracking-tighter italic mb-4">ÖDEME BAŞARISIZ</h2>
-            <p className="text-gray-400 text-[10px] font-black uppercase tracking-[0.3em] mb-12 text-center max-w-xs">Ödeme işlemi sırasında bir hata oluştu. Lütfen tekrar deneyin.</p>
+            <p className="text-gray-400 text-[10px] font-black uppercase tracking-[0.3em] mb-4 text-center max-w-xs">
+              {paymentError || "Ödeme işlemi sırasında bir hata oluştu. Lütfen tekrar deneyin."}
+            </p>
+            {paymentCode && (
+              <p className="text-red-500 text-[8px] font-black uppercase tracking-[0.2em] mb-12 text-center">
+                HATA KODU: {paymentCode}
+              </p>
+            )}
+            {!paymentCode && <div className="mb-12"></div>}
             <button
               onClick={() => handleNavigate(ViewMode.CHECKOUT)}
               className="bg-black dark:bg-white text-white dark:text-black px-12 py-5 text-[10px] font-black uppercase tracking-[0.4em] hover:bg-orange-600 dark:hover:bg-orange-600 dark:hover:text-white transition-all shadow-2xl"

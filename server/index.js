@@ -257,11 +257,14 @@ app.post('/api/payment/qnb/callback', async (req, res) => {
 
 // Handle Bank POST redirects back to our site
 app.post('/payment-success', async (req, res) => {
-    const { oid } = req.body;
-    console.log('Payment successful for order:', oid);
+    // QNB sends parameters in PascalCase or lowercase depending on version
+    const oid = req.body.OrderId || req.body.oid || req.body.OrderId;
+    const response = req.body.Response || req.body.response;
+    
+    console.log('Payment successful callback received:', req.body);
+    console.log('Processed Order ID:', oid);
 
     // Attempt to update order status in Supabase using REST API
-    // This allows us to avoid installing @supabase/supabase-js on the backend if not already present
     try {
         const supabaseUrl = process.env.VITE_SUPABASE_URL;
         const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY;
@@ -287,9 +290,22 @@ app.post('/payment-success', async (req, res) => {
 });
 
 app.post('/payment-fail', (req, res) => {
-    const { oid, errmsg } = req.body;
-    console.log('Payment failed for order:', oid, 'Error:', errmsg);
-    res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/payment-fail`);
+    // QNB Finansbank typically sends: OrderId, Response, AuthCode, ProcReturnCode, ErrMsg, HostRefNum
+    const oid = req.body.OrderId || req.body.oid;
+    const errmsg = req.body.ErrMsg || req.body.errmsg || req.body.mdErrorMsg || 'İşlem banka tarafından reddedildi.';
+    const responseCode = req.body.ProcReturnCode || req.body.Response || 'Error';
+
+    console.log('Payment failed callback received:', req.body);
+    console.log('Order ID:', oid, 'Response Code:', responseCode, 'Error:', errmsg);
+    
+    // Redirect to frontend with error message in query params
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const redirectUrl = new URL(`${frontendUrl}/payment-fail`);
+    redirectUrl.searchParams.append('error', errmsg);
+    redirectUrl.searchParams.append('code', responseCode);
+    if (oid) redirectUrl.searchParams.append('oid', oid);
+    
+    res.redirect(redirectUrl.toString());
 });
 
 // Fallback to index.html for any other routes (SPA routing)
