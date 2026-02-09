@@ -182,6 +182,7 @@ app.post('/api/payment/qnb/initiate', async (req, res) => {
         const mbrId = process.env.QNB_MBR_ID || "5";
         const clientId = process.env.QNB_MERCHANT_ID;
         const terminalId = process.env.QNB_TERMINAL_ID;
+        const userCode = process.env.QNB_USER_CODE || clientId; // Use specific API user code
         const merchantPass = process.env.QNB_MERCHANT_PASS;
         const storeType = process.env.QNB_STORE_TYPE || "3d";
 
@@ -214,10 +215,10 @@ app.post('/api/payment/qnb/initiate', async (req, res) => {
 
         const params = {
             MbrId: mbrId,
-            MerchantID: clientId,
-            UserCode: clientId,
+            MerchantId: clientId,
+            UserCode: userCode,
             UserPass: merchantPass,
-            SecureType: "3DPay",
+            SecureType: process.env.QNB_SECURE_TYPE || "3DPay", // Default to 3DPay, but configurable
             TxnType: txnType,
             InstallmentCount: installment,
             Currency: currency,
@@ -231,7 +232,8 @@ app.post('/api/payment/qnb/initiate', async (req, res) => {
             Pan: pan,
             Expiry: expiryFormatted,
             Cvv2: cv2,
-            CardHolderName: card_holder || user_name // QNB sometimes uses CardHolderName
+            CardHolderName: card_holder || user_name,
+            MOTO: "" 
         };
 
         // QNB 3D Secure Gateway URL
