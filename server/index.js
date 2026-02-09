@@ -185,11 +185,12 @@ app.post('/api/payment/qnb/initiate', async (req, res) => {
         const merchantPass = process.env.QNB_MERCHANT_PASS;
         const storeType = process.env.QNB_STORE_TYPE || "3d";
 
-        const okUrl = `${process.env.BACKEND_URL || 'https://avyna.com.tr'}/payment-success`;
-        const failUrl = `${process.env.BACKEND_URL || 'https://avyna.com.tr'}/payment-fail`;
-
+        const backendBaseUrl = (process.env.BACKEND_URL || 'https://avyna.com.tr').replace(/\/$/, '');
+        const okUrl = `${backendBaseUrl}/payment-success`;
+        const failUrl = `${backendBaseUrl}/payment-fail`;
+ 
         const rnd = crypto.randomBytes(10).toString('hex');
-        const installment = ""; // Leave blank for single payment
+        const installment = "0"; // Changed from "" to "0" for single payment
         const txnType = "Auth";
         const currency = "949"; // TRY
 
@@ -199,8 +200,9 @@ app.post('/api/payment/qnb/initiate', async (req, res) => {
         console.log('Hash String (masked):', hashStr.replace(merchantPass, '***'));
 
         // Use SHA512 for hash calculation (QNB standard)
-        const hash = crypto.createHash('sha512').update(hashStr, 'utf8').digest('base64');
-        console.log('Generated Hash:', hash);
+        // Trying HEX uppercase which is common for modern VPOS
+        const hash = crypto.createHash('sha512').update(hashStr, 'utf8').digest('hex').toUpperCase();
+        console.log('Generated Hash (HEX):', hash);
 
         // QNB expects expiry as YYMM
         let expiryFormatted = expiry.replace('/', '');
