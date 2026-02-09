@@ -49,33 +49,32 @@ const Checkout: React.FC<CheckoutProps> = ({ cart, onNavigate, onClearCart }) =>
             // 3. For the bank, remove hyphens
             const merchant_oid = orderUuid.replace(/-/g, '');
 
-            // 4. Initiate QNB Payment (3DHost - no card details needed)
-            const paymentWindow = window.open('', '_blank');
+            // 4. Redirect to QNB Payment (3DHost - no card details needed)
+            // Create form that will be submitted to get the bank's payment page
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '/api/payment/qnb/initiate';
+            form.target = '_self'; // Redirect in same window
             
-            const qnbResponse = await fetch('/api/payment/qnb/initiate', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    email: email,
-                    payment_amount: total.toFixed(2),
-                    merchant_oid: merchant_oid,
-                    user_name: `${firstName} ${lastName}`,
-                    user_address: fullAddress,
-                    user_phone: phone
-                })
+            const params = {
+                email: email,
+                payment_amount: total.toFixed(2),
+                merchant_oid: merchant_oid,
+                user_name: `${firstName} ${lastName}`,
+                user_address: fullAddress,
+                user_phone: phone
+            };
+
+            Object.entries(params).forEach(([key, value]) => {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = key;
+                input.value = value;
+                form.appendChild(input);
             });
 
-            const htmlContent = await qnbResponse.text();
-            
-            if (paymentWindow) {
-                paymentWindow.document.write(htmlContent);
-                paymentWindow.document.close();
-            } else {
-                // Fallback if popup blocked
-                const blob = new Blob([htmlContent], { type: 'text/html' });
-                const url = URL.createObjectURL(blob);
-                window.location.href = url;
-            }
+            document.body.appendChild(form);
+            form.submit();
 
         } catch (error: any) {
             console.error("Order error:", error);
