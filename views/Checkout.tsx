@@ -38,8 +38,12 @@ const Checkout: React.FC<CheckoutProps> = ({ cart, onNavigate, onClearCart }) =>
         try {
             const fullAddress = `${neighborhood} MAH. ${street} SOK. ${district}/${city}`;
 
-            // 1. Create the order in Supabase/Local Database first
+            // 1. Generate a bank-friendly Order ID (No hyphens, max 20 chars)
+            const cleanOrderId = `AVN${Date.now()}`;
+
+            // 2. Create the order in Supabase/Local Database first
             const orderData = await ApiService.createOrder({
+                id: cleanOrderId, // Force use of clean ID
                 customerName: `${firstName} ${lastName}`,
                 customerEmail: email,
                 customerPhone: phone,
@@ -47,7 +51,7 @@ const Checkout: React.FC<CheckoutProps> = ({ cart, onNavigate, onClearCart }) =>
                 total: total
             }, cart);
 
-            const merchant_oid = orderData.orderId || orderData.id;
+            const merchant_oid = cleanOrderId;
 
             // 2. Initiate QNB Payment
             const qnbResponse = await ApiService.initiateQNBPayment({

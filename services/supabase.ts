@@ -122,6 +122,7 @@ export const SupabaseService = {
         const { data: orderData, error: orderError } = await supabase
             .from('orders')
             .insert([{
+                id: order.id, // Support custom order ID
                 customer_name: order.customerName,
                 customer_email: order.customerEmail,
                 customer_phone: order.customerPhone,
