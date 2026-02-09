@@ -183,7 +183,8 @@ app.post('/api/payment/qnb/initiate', async (req, res) => {
         const clientId = process.env.QNB_MERCHANT_ID;
         const terminalId = process.env.QNB_TERMINAL_ID;
         const userCode = process.env.QNB_USER_CODE || clientId; // Use specific API user code
-        const merchantPass = process.env.QNB_MERCHANT_PASS;
+        const userPass = process.env.QNB_USER_PASS; // API User Password (for authentication)
+        const merchantPass = process.env.QNB_MERCHANT_PASS; // Merchant Password (for hash)
         const storeType = process.env.QNB_STORE_TYPE || "3d";
 
         const backendBaseUrl = (process.env.BACKEND_URL || 'https://avyna.com.tr').replace(/\/$/, '');
@@ -217,7 +218,7 @@ app.post('/api/payment/qnb/initiate', async (req, res) => {
             MbrId: mbrId,
             MerchantId: clientId,
             UserCode: userCode,
-            UserPass: merchantPass,
+            UserPass: userPass, // CRITICAL: Use API User Password, NOT merchantPass
             SecureType: process.env.QNB_SECURE_TYPE || "3DPay", // Default to 3DPay, but configurable
             TxnType: txnType,
             InstallmentCount: installment,
