@@ -22,10 +22,6 @@ const Checkout: React.FC<CheckoutProps> = ({ cart, onNavigate, onClearCart }) =>
     const [district, setDistrict] = useState('');
     const [city, setCity] = useState('');
     const [phone, setPhone] = useState('');
-    const [cardNumber, setCardNumber] = useState('');
-    const [cardExpiry, setCardExpiry] = useState('');
-    const [cardCVC, setCardCVC] = useState('');
-    const [cardHolderName, setCardHolderName] = useState('');
 
     const subtotal = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
     const total = subtotal; // No shipping fee
@@ -50,41 +46,35 @@ const Checkout: React.FC<CheckoutProps> = ({ cart, onNavigate, onClearCart }) =>
                 total: total
             }, cart);
 
-            // 3. For the bank, remove hyphens (many banks don't allow special chars)
+            // 3. For the bank, remove hyphens
             const merchant_oid = orderUuid.replace(/-/g, '');
 
-            // 2. Initiate QNB Payment
-            const qnbResponse = await ApiService.initiateQNBPayment({
-                email: email,
-                payment_amount: total.toFixed(2), // Ensure 2 decimal places for QNB
-                merchant_oid: merchant_oid,
-                user_name: `${firstName} ${lastName}`,
-                user_address: fullAddress,
-                user_phone: phone,
-                pan: cardNumber.replace(/\s/g, ''),
-                expiry: cardExpiry,
-                cv2: cardCVC,
-                card_holder: cardHolderName
+            // 4. Initiate QNB Payment (3DHost - no card details needed)
+            const paymentWindow = window.open('', '_blank');
+            
+            const qnbResponse = await fetch('/api/payment/qnb/initiate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    email: email,
+                    payment_amount: total.toFixed(2),
+                    merchant_oid: merchant_oid,
+                    user_name: `${firstName} ${lastName}`,
+                    user_address: fullAddress,
+                    user_phone: phone
+                })
             });
 
-            if (qnbResponse.status === 'success') {
-                // 3. Create a hidden form and submit it to QNB VPOS Gateway
-                const form = document.createElement('form');
-                form.method = 'POST';
-                form.action = qnbResponse.paymentUrl;
-
-                Object.keys(qnbResponse.params).forEach(key => {
-                    const input = document.createElement('input');
-                    input.type = 'hidden';
-                    input.name = key;
-                    input.value = qnbResponse.params[key];
-                    form.appendChild(input);
-                });
-
-                document.body.appendChild(form);
-                form.submit();
+            const htmlContent = await qnbResponse.text();
+            
+            if (paymentWindow) {
+                paymentWindow.document.write(htmlContent);
+                paymentWindow.document.close();
             } else {
-                throw new Error(qnbResponse.message || 'Ödeme başlatılamadı');
+                // Fallback if popup blocked
+                const blob = new Blob([htmlContent], { type: 'text/html' });
+                const url = URL.createObjectURL(blob);
+                window.location.href = url;
             }
 
         } catch (error: any) {
@@ -214,63 +204,7 @@ const Checkout: React.FC<CheckoutProps> = ({ cart, onNavigate, onClearCart }) =>
                                     </div>
                                 </div>
 
-                                <div className="space-y-8">
-                                    <h3 className="text-[11px] font-black uppercase tracking-[0.3em] flex items-center gap-4 text-orange-600">
-                                        <CreditCard size={18} /> KART BİLGİLERİ
-                                    </h3>
-                                    <div className="grid grid-cols-2 gap-6">
-                                        <div className="col-span-2">
-                                            <input
-                                                required
-                                                type="text"
-                                                placeholder="KART ÜZERİNDEKİ AD SOYAD"
-                                                value={cardHolderName}
-                                                onChange={(e) => setCardHolderName(e.target.value.toUpperCase())}
-                                                className="w-full bg-transparent border-b border-black/10 dark:border-white/10 py-4 text-xs font-black tracking-widest outline-none focus:border-orange-600 transition-colors uppercase"
-                                            />
-                                        </div>
-                                        <div className="col-span-2">
-                                            <input
-                                                required
-                                                type="text"
-                                                placeholder="KART NUMARASI"
-                                                value={cardNumber}
-                                                onChange={(e) => {
-                                                    const val = e.target.value.replace(/\D/g, '').replace(/(.{4})/g, '$1 ').trim();
-                                                    if (val.length <= 19) setCardNumber(val);
-                                                }}
-                                                className="w-full bg-transparent border-b border-black/10 dark:border-white/10 py-4 text-xs font-black tracking-widest outline-none focus:border-orange-600 transition-colors"
-                                            />
-                                        </div>
-                                        <div className="col-span-1">
-                                            <input
-                                                required
-                                                type="text"
-                                                placeholder="AA/YY"
-                                                value={cardExpiry}
-                                                onChange={(e) => {
-                                                    let val = e.target.value.replace(/\D/g, '');
-                                                    if (val.length > 2) val = val.substring(0, 2) + '/' + val.substring(2, 4);
-                                                    if (val.length <= 5) setCardExpiry(val);
-                                                }}
-                                                className="w-full bg-transparent border-b border-black/10 dark:border-white/10 py-4 text-xs font-black tracking-widest outline-none focus:border-orange-600 transition-colors"
-                                            />
-                                        </div>
-                                        <div className="col-span-1">
-                                            <input
-                                                required
-                                                type="text"
-                                                placeholder="CVC"
-                                                value={cardCVC}
-                                                onChange={(e) => {
-                                                    const val = e.target.value.replace(/\D/g, '');
-                                                    if (val.length <= 3) setCardCVC(val);
-                                                }}
-                                                className="w-full bg-transparent border-b border-black/10 dark:border-white/10 py-4 text-xs font-black tracking-widest outline-none focus:border-orange-600 transition-colors"
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
+                                {/* Payment info removed - handled by bank's 3DHost page */}
 
                                 <button
                                     disabled={isProcessing}

@@ -171,20 +171,15 @@ app.post('/api/payment/qnb/initiate', async (req, res) => {
             user_name,
             user_address,
             user_phone,
-            user_basket,
-            pan,        // Card Number
-            expiry,     // Card Expiry (MM/YY or MM/YYYY)
-            cv2,        // CVV
-            cardType,   // 1 for Visa, 2 for MasterCard
-            card_holder // Card Holder Name
+            user_basket
         } = req.body;
 
         const mbrId = process.env.QNB_MBR_ID || "5";
         const clientId = process.env.QNB_MERCHANT_ID;
         const terminalId = process.env.QNB_TERMINAL_ID;
-        const userCode = process.env.QNB_USER_CODE || clientId; // Use specific API user code
-        const userPass = process.env.QNB_USER_PASS; // API User Password (for authentication)
-        const merchantPass = process.env.QNB_MERCHANT_PASS; // Merchant Password (for hash)
+        const userCode = process.env.QNB_USER_CODE || clientId;
+        const userPass = process.env.QNB_USER_PASS;
+        const merchantPass = process.env.QNB_MERCHANT_PASS;
         const storeType = process.env.QNB_STORE_TYPE || "3d";
 
         const backendBaseUrl = (process.env.BACKEND_URL || 'https://avyna.com.tr').replace(/\/$/, '');
@@ -192,7 +187,7 @@ app.post('/api/payment/qnb/initiate', async (req, res) => {
         const failUrl = `${backendBaseUrl}/payment-fail`;
  
         const rnd = crypto.randomBytes(10).toString('hex');
-        const installment = "0"; // Changed from "" to "0" for single payment
+        const installment = "0";
         const txnType = "Auth";
         const currency = "949"; // TRY
 
@@ -201,24 +196,17 @@ app.post('/api/payment/qnb/initiate', async (req, res) => {
         const hashStr = mbrId + merchant_oid + payment_amount + okUrl + failUrl + txnType + installment + rnd + merchantPass;
         console.log('Hash String (masked):', hashStr.replace(merchantPass, '***'));
  
-        // CRITICAL: QNB requires SHA1 Base64 (NOT SHA512!)
+        // CRITICAL: QNB requires SHA1 Base64
         const hash = crypto.createHash('sha1').update(hashStr, 'utf8').digest('base64');
         console.log('Generated Hash (SHA1 Base64):', hash);
 
-        // QNB expects expiry as YYMM
-        let expiryFormatted = expiry.replace('/', '');
-        if (expiryFormatted.length === 4) {
-            const mm = expiryFormatted.substring(0, 2);
-            const yy = expiryFormatted.substring(2, 4);
-            expiryFormatted = yy + mm;
-        }
-
+        // 3DHost Model - NO CARD DETAILS!
         const params = {
             MbrId: mbrId,
             MerchantId: clientId,
             UserCode: userCode,
-            UserPass: userPass, // CRITICAL: Use API User Password, NOT merchantPass
-            SecureType: process.env.QNB_SECURE_TYPE || "3DPay", // Default to 3DPay, but configurable
+            UserPass: userPass,
+            SecureType: "3DHost", // Fixed to 3DHost
             TxnType: txnType,
             InstallmentCount: installment,
             Currency: currency,
@@ -228,25 +216,66 @@ app.post('/api/payment/qnb/initiate', async (req, res) => {
             PurchAmount: payment_amount,
             Lang: "TR",
             Rnd: rnd,
-            Hash: hash,
-            Pan: pan,
-            Expiry: expiryFormatted,
-            Cvv2: cv2,
-            CardHolderName: card_holder || user_name,
-            MOTO: "" 
+            Hash: hash
         };
 
-        // QNB 3D Secure Gateway URL
-        const gatewayUrl = process.env.QNB_GATEWAY_URL || 'https://vpos.qnbfinansbank.com/Gateway/3DHost.aspx';
+        const gatewayUrl = process.env.QNB_GATEWAY_URL || 'https://vpos.qnb.com.tr/Gateway/3dHost.aspx';
 
         console.log('Gateway URL:', gatewayUrl);
         console.log('Params (masked):', { ...params, UserPass: '***', Hash: '***' });
 
-        res.json({
-            status: 'success',
-            paymentUrl: gatewayUrl,
-            params: params
-        });
+        // Create HTML form that auto-submits to bank's page
+        const formHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Ödeme Sayfasına Yönlendiriliyor...</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh; 
+            margin: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .loader {
+            text-align: center;
+            color: white;
+        }
+        .spinner {
+            border: 4px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top: 4px solid white;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="loader">
+        <div class="spinner"></div>
+        <p>Güvenli ödeme sayfasına yönlendiriliyorsunuz...</p>
+    </div>
+    <form id="paymentForm" action="${gatewayUrl}" method="POST">
+        ${Object.entries(params).map(([key, value]) => 
+            `<input type="hidden" name="${key}" value="${value}">`
+        ).join('\n        ')}
+    </form>
+    <script>
+        document.getElementById('paymentForm').submit();
+    </script>
+</body>
+</html>`;
+
+        res.send(formHtml);
 
     } catch (error) {
         console.error('QNB Initiation Error:', error);
