@@ -25,6 +25,7 @@ const Checkout: React.FC<CheckoutProps> = ({ cart, onNavigate, onClearCart }) =>
     const [cardNumber, setCardNumber] = useState('');
     const [cardExpiry, setCardExpiry] = useState('');
     const [cardCVC, setCardCVC] = useState('');
+    const [cardHolderName, setCardHolderName] = useState('');
 
     const subtotal = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
     const shipping = subtotal > 50000 ? 0 : 250;
@@ -58,7 +59,8 @@ const Checkout: React.FC<CheckoutProps> = ({ cart, onNavigate, onClearCart }) =>
                 user_phone: phone,
                 pan: cardNumber.replace(/\s/g, ''),
                 expiry: cardExpiry,
-                cv2: cardCVC
+                cv2: cardCVC,
+                card_holder: cardHolderName
             });
 
             if (qnbResponse.status === 'success') {
@@ -213,6 +215,16 @@ const Checkout: React.FC<CheckoutProps> = ({ cart, onNavigate, onClearCart }) =>
                                         <CreditCard size={18} /> KART BİLGİLERİ
                                     </h3>
                                     <div className="grid grid-cols-2 gap-6">
+                                        <div className="col-span-2">
+                                            <input
+                                                required
+                                                type="text"
+                                                placeholder="KART ÜZERİNDEKİ AD SOYAD"
+                                                value={cardHolderName}
+                                                onChange={(e) => setCardHolderName(e.target.value.toUpperCase())}
+                                                className="w-full bg-transparent border-b border-black/10 dark:border-white/10 py-4 text-xs font-black tracking-widest outline-none focus:border-orange-600 transition-colors uppercase"
+                                            />
+                                        </div>
                                         <div className="col-span-2">
                                             <input
                                                 required

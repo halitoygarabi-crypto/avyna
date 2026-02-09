@@ -175,7 +175,8 @@ app.post('/api/payment/qnb/initiate', async (req, res) => {
             pan,        // Card Number
             expiry,     // Card Expiry (MM/YY or MM/YYYY)
             cv2,        // CVV
-            cardType    // 1 for Visa, 2 for MasterCard
+            cardType,   // 1 for Visa, 2 for MasterCard
+            card_holder // Card Holder Name
         } = req.body;
 
         const mbrId = process.env.QNB_MBR_ID || "5";
@@ -227,7 +228,8 @@ app.post('/api/payment/qnb/initiate', async (req, res) => {
             Hash: hash,
             Pan: pan,
             Expiry: expiryFormatted,
-            Cvv2: cv2
+            Cvv2: cv2,
+            CardHolderName: card_holder || user_name // QNB sometimes uses CardHolderName
         };
 
         // QNB 3D Secure Gateway URL
