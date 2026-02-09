@@ -262,10 +262,16 @@ app.post('/api/payment/qnb/callback', async (req, res) => {
 // Handle Bank POST redirects back to our site
 app.post('/payment-success', async (req, res) => {
     // QNB sends parameters in PascalCase or lowercase depending on version
-    const oid = req.body.OrderId || req.body.oid || req.body.OrderId;
+    let oid = req.body.OrderId || req.body.oid || req.body.OrderId;
     const response = req.body.Response || req.body.response;
     
     console.log('Payment successful callback received:', req.body);
+
+    // If it's a 32-char string without dashes, reconstruct the UUID for Supabase
+    if (oid && oid.length === 32 && !oid.includes('-')) {
+        oid = oid.replace(/(.{8})(.{4})(.{4})(.{4})(.{12})/, "$1-$2-$3-$4-$5");
+    }
+    
     console.log('Processed Order ID:', oid);
 
     // Attempt to update order status in Supabase using REST API
@@ -295,7 +301,13 @@ app.post('/payment-success', async (req, res) => {
 
 app.post('/payment-fail', (req, res) => {
     // QNB Finansbank typically sends: OrderId, Response, AuthCode, ProcReturnCode, ErrMsg, HostRefNum
-    const oid = req.body.OrderId || req.body.oid;
+    let oid = req.body.OrderId || req.body.oid;
+    
+    // If it's a 32-char string without dashes, reconstruct the UUID
+    if (oid && oid.length === 32 && !oid.includes('-')) {
+        oid = oid.replace(/(.{8})(.{4})(.{4})(.{4})(.{12})/, "$1-$2-$3-$4-$5");
+    }
+
     const errmsg = req.body.ErrMsg || req.body.errmsg || req.body.mdErrorMsg || 'İşlem banka tarafından reddedildi.';
     const responseCode = req.body.ProcReturnCode || req.body.Response || 'Error';
 

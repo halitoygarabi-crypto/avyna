@@ -38,12 +38,12 @@ const Checkout: React.FC<CheckoutProps> = ({ cart, onNavigate, onClearCart }) =>
         try {
             const fullAddress = `${neighborhood} MAH. ${street} SOK. ${district}/${city}`;
 
-            // 1. Generate a bank-friendly Order ID (No hyphens, max 20 chars)
-            const cleanOrderId = `AVN${Date.now()}`;
+            // 1. Generate a valid UUID for Supabase
+            const orderUuid = crypto.randomUUID();
 
-            // 2. Create the order in Supabase/Local Database first
-            const orderData = await ApiService.createOrder({
-                id: cleanOrderId, // Force use of clean ID
+            // 2. Create the order in Supabase
+            await ApiService.createOrder({
+                id: orderUuid, 
                 customerName: `${firstName} ${lastName}`,
                 customerEmail: email,
                 customerPhone: phone,
@@ -51,7 +51,8 @@ const Checkout: React.FC<CheckoutProps> = ({ cart, onNavigate, onClearCart }) =>
                 total: total
             }, cart);
 
-            const merchant_oid = cleanOrderId;
+            // 3. For the bank, remove hyphens (many banks don't allow special chars)
+            const merchant_oid = orderUuid.replace(/-/g, '');
 
             // 2. Initiate QNB Payment
             const qnbResponse = await ApiService.initiateQNBPayment({
