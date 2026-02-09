@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Home, LayoutGrid, Scan, Heart, User } from 'lucide-react';
+import { Home, LayoutGrid, Heart, User } from 'lucide-react';
 import { ViewMode } from '../types';
 
 interface BottomNavProps {
@@ -18,14 +18,6 @@ const BottomNav: React.FC<BottomNavProps> = ({ activeView, onNavigate }) => {
         >
           <Home size={24} strokeWidth={activeView === ViewMode.HOME ? 3 : 2} />
           <span className="text-[9px] font-black uppercase tracking-[0.2em]">Home</span>
-        </button>
-
-        <button
-          onClick={() => onNavigate(ViewMode.CONSULTANT)}
-          className={`flex flex-col items-center justify-center w-full h-full space-y-1 transition-all ${activeView === ViewMode.CONSULTANT ? 'text-orange-600' : 'text-gray-400 hover:text-black dark:hover:text-white'}`}
-        >
-          <Scan size={24} strokeWidth={activeView === ViewMode.CONSULTANT ? 3 : 2} />
-          <span className="text-[9px] font-black uppercase tracking-[0.2em]">AI AR</span>
         </button>
 
         <button

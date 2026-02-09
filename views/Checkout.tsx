@@ -28,8 +28,7 @@ const Checkout: React.FC<CheckoutProps> = ({ cart, onNavigate, onClearCart }) =>
     const [cardHolderName, setCardHolderName] = useState('');
 
     const subtotal = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
-    const shipping = subtotal > 50000 ? 0 : 250;
-    const total = subtotal + shipping;
+    const total = subtotal; // No shipping fee
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -318,10 +317,6 @@ const Checkout: React.FC<CheckoutProps> = ({ cart, onNavigate, onClearCart }) =>
                                 <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest">
                                     <span className="text-gray-400">ARA TOPLAM</span>
                                     <span className="text-black dark:text-white font-black">₺{subtotal.toLocaleString()}</span>
-                                </div>
-                                <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest">
-                                    <span className="text-gray-400">LOJİSTİK</span>
-                                    <span className="text-black dark:text-white font-black">{shipping === 0 ? 'ÜCRETSİZ' : `₺${shipping} `}</span>
                                 </div>
                                 <div className="flex justify-between text-xl font-black italic pt-4">
                                     <span className="text-black dark:text-white">TOPLAM</span>
