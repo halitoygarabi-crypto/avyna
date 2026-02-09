@@ -13,8 +13,7 @@ interface CartProps {
 
 const Cart: React.FC<CartProps> = ({ cart, onUpdateQuantity, onRemoveItem, onNavigate, onBack }) => {
     const subtotal = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
-    const shipping = subtotal > 50000 ? 0 : 250;
-    const total = subtotal + shipping;
+    const total = subtotal; // No shipping fee
 
     if (cart.length === 0) {
         return (
@@ -111,13 +110,6 @@ const Cart: React.FC<CartProps> = ({ cart, onUpdateQuantity, onRemoveItem, onNav
                                     <span>Ara Toplam</span>
                                     <span className="text-black dark:text-white">₺{subtotal.toLocaleString()}</span>
                                 </div>
-                                <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest text-gray-400">
-                                    <span>Lojistik</span>
-                                    <span className="text-black dark:text-white">{shipping === 0 ? 'ÜCRETSİZ' : `₺${shipping}`}</span>
-                                </div>
-                                {shipping > 0 && (
-                                    <p className="text-[8px] text-orange-600 font-black tracking-widest uppercase">₺50.000 ÜZERİ ÜCRETSİZ KARGO</p>
-                                )}
                             </div>
 
                             <div className="pt-6 border-t border-black/5 dark:border-white/5 flex justify-between items-end">
