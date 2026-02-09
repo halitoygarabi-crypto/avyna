@@ -200,11 +200,10 @@ app.post('/api/payment/qnb/initiate', async (req, res) => {
         // MbrId + MrcOrderId + PurchAmount + OkUrl + FailUrl + TxnType + InstallmentCount + Rnd + MerchantPass
         const hashStr = mbrId + merchant_oid + payment_amount + okUrl + failUrl + txnType + installment + rnd + merchantPass;
         console.log('Hash String (masked):', hashStr.replace(merchantPass, '***'));
-
-        // Use SHA512 for hash calculation (QNB standard)
-        // Trying HEX uppercase which is common for modern VPOS
-        const hash = crypto.createHash('sha512').update(hashStr, 'utf8').digest('hex').toUpperCase();
-        console.log('Generated Hash (HEX):', hash);
+ 
+        // CRITICAL: QNB requires SHA1 Base64 (NOT SHA512!)
+        const hash = crypto.createHash('sha1').update(hashStr, 'utf8').digest('base64');
+        console.log('Generated Hash (SHA1 Base64):', hash);
 
         // QNB expects expiry as YYMM
         let expiryFormatted = expiry.replace('/', '');
