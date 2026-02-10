@@ -64,7 +64,9 @@ const App: React.FC = () => {
     try {
       const result = await ApiService.addProduct(p);
       if (result.success) {
-        setProducts([p, ...products]);
+        // Use the returned product data which contains the correct database ID
+        const { success, ...savedProduct } = result as any;
+        setProducts([savedProduct as Product, ...products]);
       }
     } catch (e) {
       console.error("Error adding product:", e);

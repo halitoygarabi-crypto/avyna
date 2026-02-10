@@ -24,14 +24,15 @@ export const SupabaseService = {
         return rawData.map((p: any) => ({
             ...p,
             images: p.images || [],
-            modelUrl: p.modelurl
+            modelUrl: p.modelurl,
+            videoUrl: p.videourl
         }));
     },
 
 
     async addProduct(product: any) {
         // Explicitly map only the columns that exist in the Supabase schema
-        const dbProduct = {
+        const dbProduct: any = {
             id: product.id || undefined,
             name: product.name,
             price: product.price,
@@ -40,9 +41,13 @@ export const SupabaseService = {
             stock: product.stock,
             images: product.images || [],
             modelurl: product.modelUrl,
-            videourl: product.videoUrl,
             dimensions: product.dimensions
         };
+
+        // Only add videourl if it's provided, to be safer
+        if (product.videoUrl) {
+            dbProduct.videourl = product.videoUrl;
+        }
 
         const { data, error } = await supabase
             .from('products')
@@ -52,9 +57,21 @@ export const SupabaseService = {
 
         if (error) {
             console.error('Supabase Add Product Error:', error);
-            // Provide a cleaner error message for common issues
-            if (error.code === '42703') { // Undefined column
-                throw new Error("Veritabanı şeması güncel değil (videourl sütunu eksik olabilir).");
+            // If videourl column is missing, try again without it
+            if (error.code === '42703' && dbProduct.videourl) {
+                delete dbProduct.videourl;
+                const { data: retryData, error: retryError } = await supabase
+                    .from('products')
+                    .insert([dbProduct])
+                    .select()
+                    .single();
+                if (retryError) throw retryError;
+                return {
+                    ...retryData,
+                    images: retryData.images || [],
+                    modelUrl: retryData.modelurl,
+                    videoUrl: retryData.videourl
+                };
             }
             throw error;
         }
@@ -81,7 +98,7 @@ export const SupabaseService = {
 
     async updateProduct(product: any) {
         // Explicitly map only the columns that exist in the Supabase schema
-        const dbProduct = {
+        const dbProduct: any = {
             name: product.name,
             price: product.price,
             category: product.category,
@@ -89,9 +106,13 @@ export const SupabaseService = {
             stock: product.stock,
             images: product.images || [],
             modelurl: product.modelUrl,
-            videourl: product.videoUrl,
             dimensions: product.dimensions
         };
+
+        // Only add videourl if it's provided
+        if (product.videoUrl) {
+            dbProduct.videourl = product.videoUrl;
+        }
 
         const { data, error } = await supabase
             .from('products')
@@ -102,9 +123,31 @@ export const SupabaseService = {
 
         if (error) {
             console.error('Supabase Update Product Error:', error);
-            if (error.code === '42703') { // Undefined column
-                throw new Error("Veritabanı şeması güncel değil (videourl sütunu eksik olabilir).");
+            
+            // If videourl column is missing, try again without it
+            if (error.code === '42703' && dbProduct.videourl) {
+                delete dbProduct.videourl;
+                const { data: retryData, error: retryError } = await supabase
+                    .from('products')
+                    .update(dbProduct)
+                    .eq('id', product.id)
+                    .select()
+                    .single();
+                
+                if (retryError) throw retryError;
+                return {
+                    ...retryData,
+                    images: retryData.images || [],
+                    modelUrl: retryData.modelurl,
+                    videoUrl: retryData.videourl
+                };
             }
+            
+            // Better handling for 'Cannot coerce' error which usually means 0 rows matched
+            if (error.message && error.message.includes('Cannot coerce')) {
+                throw new Error("Ürün güncellenemedi. ID eşleşmiyor olabilir veya RLS politikaları izin vermiyor olabilir.");
+            }
+
             throw error;
         }
 

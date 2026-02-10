@@ -198,7 +198,7 @@ const Admin: React.FC<AdminProps> = ({ products, onAddProduct, onUpdateProduct, 
     } catch (error: any) {
       console.error("Update error:", error);
       const errorMessage = error.message || "Bilinmeyen bir hata oluştu.";
-      alert(`Güncelleme sırasında bir hata oluştu: ${errorMessage}\n\nİpucu: 'videourl' sütununun veritabanında olduğundan emin olun.`);
+      alert(`Güncelleme sırasında bir hata oluştu: ${errorMessage}\n\nİpucu: Eğer 'Cannot coerce' hatası alıyorsanız, ID uyuşmazlığı veya yetki hatası olabilir. Eğer 'videourl' hatası alıyorsanız veritabanına bu sütunu eklemeniz gerekebilir.`);
     } finally {
       setIsSubmitting(false);
     }
