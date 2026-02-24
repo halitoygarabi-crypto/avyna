@@ -6,11 +6,17 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import axios from 'axios';
 import crypto from 'crypto';
+import { createClient } from '@supabase/supabase-js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 dotenv.config({ path: path.join(__dirname, '../.env') });
+dotenv.config({ path: path.join(__dirname, '../.env.local') }); // Also load .env.local
+
+const supabaseUrl = process.env.VITE_SUPABASE_URL;
+const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY;
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -55,10 +61,27 @@ db.exec(`
 
 // --- PRODUCT ROUTES ---
 
-app.get('/api/products', (req, res) => {
+app.get('/api/products', async (req, res) => {
     try {
+        // Try to get from Supabase first (Source of Truth)
+        const { data: supabaseProducts, error: supabaseError } = await supabase
+            .from('products')
+            .select('*')
+            .order('name', { ascending: true });
+
+        if (!supabaseError && supabaseProducts) {
+            const mapped = supabaseProducts.map(p => ({
+                ...p,
+                images: p.images || [],
+                modelUrl: p.modelurl,
+                videoUrl: p.videourl
+            }));
+            return res.json(mapped);
+        }
+
+        // Fallback to SQLite if Supabase fails
+        console.warn('Supabase fetch failed, falling back to local SQLite:', supabaseError);
         const products = db.prepare('SELECT * FROM products ORDER BY name ASC').all();
-        // Parse dimensions and images if they exist
         const parsedProducts = products.map(p => ({
             ...p,
             dimensions: p.dimensions ? JSON.parse(p.dimensions) : null,
@@ -70,24 +93,63 @@ app.get('/api/products', (req, res) => {
     }
 });
 
-app.post('/api/products', (req, res) => {
-    const { id, name, price, category, description, stock, imageUrl, modelUrl, dimensions } = req.body;
+app.post('/api/products', async (req, res) => {
+    const { name, price, category, description, stock, images, modelUrl, dimensions, videoUrl } = req.body;
+    
     try {
-        const stmt = db.prepare(`
-      INSERT INTO products (id, name, price, category, description, stock, imageUrl, modelUrl, dimensions)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-        stmt.run(id || Date.now().toString(), name, price, category, description, stock, imageUrl, modelUrl, JSON.stringify(dimensions));
-        res.status(201).json({ success: true, id });
+        // 1. Save to Supabase (Source of Truth)
+        const dbProduct = {
+            name,
+            price,
+            category,
+            description,
+            stock,
+            images: images || [],
+            modelurl: modelUrl,
+            dimensions: dimensions || { width: 100, height: 100, depth: 100 },
+            videourl: videoUrl
+        };
+
+        const { data: supData, error: supError } = await supabase
+            .from('products')
+            .insert([dbProduct])
+            .select()
+            .single();
+
+        if (supError) {
+            console.error('Supabase Product Insert Error:', supError);
+            throw supError;
+        }
+
+        // 2. Mirror to Local SQLite (Backup/Cache)
+        try {
+            const stmt = db.prepare(`
+                INSERT INTO products (id, name, price, category, description, stock, imageUrl, modelUrl, dimensions)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `);
+            stmt.run(supData.id, name, price, category, description, stock, JSON.stringify(images), modelUrl, JSON.stringify(dimensions));
+        } catch (sqliteErr) {
+            console.warn('SQLite mirror failed, but Supabase succeeded:', sqliteErr.message);
+        }
+
+        res.status(201).json({ success: true, ...supData });
     } catch (error) {
+        console.error('Add Product Route Error:', error);
         res.status(500).json({ error: error.message });
     }
 });
 
-app.delete('/api/products/:id', (req, res) => {
+app.delete('/api/products/:id', async (req, res) => {
+    const { id } = req.params;
     try {
+        // Delete from Supabase
+        const { error: supError } = await supabase.from('products').delete().eq('id', id);
+        if (supError) throw supError;
+
+        // Delete from SQLite
         const stmt = db.prepare('DELETE FROM products WHERE id = ?');
-        stmt.run(req.params.id);
+        stmt.run(id);
+
         res.json({ success: true });
     } catch (error) {
         res.status(500).json({ error: error.message });

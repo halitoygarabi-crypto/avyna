@@ -4,22 +4,33 @@ import { SupabaseService } from './supabase';
 export const ApiService = {
     // Products
     async getProducts() {
-        return await SupabaseService.getProducts();
+        const backendUrl = import.meta.env.VITE_BACKEND_URL || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5000');
+        const response = await fetch(`${backendUrl}/api/products`);
+        if (!response.ok) throw new Error('Failed to fetch products');
+        return await response.json();
     },
 
     async addProduct(product: any) {
-        const result = await SupabaseService.addProduct(product);
-        return { success: true, ...result };
+        const backendUrl = import.meta.env.VITE_BACKEND_URL || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5000');
+        const response = await fetch(`${backendUrl}/api/products`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(product)
+        });
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to add product');
+        }
+        return await response.json();
     },
 
     async deleteProduct(id: string) {
-        await SupabaseService.deleteProduct(id);
+        const backendUrl = import.meta.env.VITE_BACKEND_URL || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5000');
+        const response = await fetch(`${backendUrl}/api/products/${id}`, {
+            method: 'DELETE'
+        });
+        if (!response.ok) throw new Error('Failed to delete product');
         return { success: true };
-    },
-
-    async updateProduct(product: any) {
-        const result = await SupabaseService.updateProduct(product);
-        return { success: true, ...result };
     },
 
 
