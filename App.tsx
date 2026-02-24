@@ -11,6 +11,7 @@ import Cart from './views/Cart';
 import Checkout from './views/Checkout';
 import TrialRoom from './views/TrialRoom';
 import Orders from './views/Orders';
+import InfoPages from './views/InfoPages';
 import { Product, ViewMode, CartItem } from './types';
 import { INITIAL_PRODUCTS } from './services/mockData';
 import { ApiService } from './services/api';
@@ -254,10 +255,34 @@ const App: React.FC = () => {
             </button>
           </div>
         )}
+
+        {view === ViewMode.INFO_DELIVERY && (
+          <InfoPages type="delivery" onBack={() => setView(ViewMode.HOME)} />
+        )}
+
+        {view === ViewMode.INFO_WARRANTY && (
+          <InfoPages type="warranty" onBack={() => setView(ViewMode.HOME)} />
+        )}
+
+        {view === ViewMode.CONTACT && (
+          <InfoPages type="contact" onBack={() => setView(ViewMode.HOME)} />
+        )}
+
+        {view === ViewMode.INFO_PRIVACY && (
+          <InfoPages type="privacy" onBack={() => setView(ViewMode.HOME)} />
+        )}
+
+        {view === ViewMode.INFO_DISTANCE_SALES && (
+          <InfoPages type="distance_sales" onBack={() => setView(ViewMode.HOME)} />
+        )}
       </main>
 
-      {view !== ViewMode.DETAIL && view !== ViewMode.CHECKOUT && view !== ViewMode.TRIAL_ROOM && <Footer />}
-      <BottomNav activeView={view} onNavigate={handleNavigate} />
+      {view !== ViewMode.DETAIL && view !== ViewMode.CHECKOUT && view !== ViewMode.TRIAL_ROOM && <Footer onNavigate={handleNavigate} />}
+      <BottomNav 
+        activeView={view} 
+        onNavigate={handleNavigate} 
+        cartCount={cart.reduce((sum, item) => sum + item.quantity, 0)} 
+      />
       <WhatsAppButton />
     </div>
   );

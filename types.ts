@@ -35,7 +35,12 @@ export enum ViewMode {
   TRIAL_ROOM = 'trial_room',
   ORDERS = 'orders',
   PAYMENT_SUCCESS = 'payment_success',
-  PAYMENT_FAIL = 'payment_fail'
+  PAYMENT_FAIL = 'payment_fail',
+  INFO_DELIVERY = 'info_delivery',
+  INFO_WARRANTY = 'info_warranty',
+  CONTACT = 'contact',
+  INFO_PRIVACY = 'info_privacy',
+  INFO_DISTANCE_SALES = 'info_distance_sales'
 }
 
 export interface CartItem {

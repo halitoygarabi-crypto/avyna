@@ -44,7 +44,7 @@ export const SupabaseService = {
             dimensions: product.dimensions
         };
 
-        // Only add videourl if it's provided, to be safer
+        // Only add videourl if it's provided
         if (product.videoUrl) {
             dbProduct.videourl = product.videoUrl;
         }
@@ -52,35 +52,36 @@ export const SupabaseService = {
         const { data, error } = await supabase
             .from('products')
             .insert([dbProduct])
-            .select()
-            .single();
+            .select();
 
         if (error) {
             console.error('Supabase Add Product Error:', error);
-            // If videourl column is missing, try again without it
+            // If videourl column is missing (code 42703), try again without it
             if (error.code === '42703' && dbProduct.videourl) {
-                delete dbProduct.videourl;
+                const { videourl, ...cleanProduct } = dbProduct;
                 const { data: retryData, error: retryError } = await supabase
                     .from('products')
-                    .insert([dbProduct])
-                    .select()
-                    .single();
+                    .insert([cleanProduct])
+                    .select();
+                
                 if (retryError) throw retryError;
+                const returned = retryData[0];
                 return {
-                    ...retryData,
-                    images: retryData.images || [],
-                    modelUrl: retryData.modelurl,
-                    videoUrl: retryData.videourl
+                    ...returned,
+                    images: returned.images || [],
+                    modelUrl: returned.modelurl,
+                    videoUrl: returned.videourl
                 };
             }
             throw error;
         }
 
+        const returned = data[0];
         return {
-            ...data,
-            images: data.images || [],
-            modelUrl: data.modelurl,
-            videoUrl: data.videourl
+            ...returned,
+            images: returned.images || [],
+            modelUrl: returned.modelurl,
+            videoUrl: returned.videourl
         };
     },
 

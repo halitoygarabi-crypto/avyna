@@ -45,7 +45,7 @@ const Admin: React.FC<AdminProps> = ({ products, onAddProduct, onUpdateProduct, 
 
   const modelInputRef = React.useRef<HTMLInputElement>(null);
 
-  const compressImage = (base64Str: string, maxWidth = 800, maxHeight = 800): Promise<string> => {
+  const compressImage = (base64Str: string, maxWidth = 600, maxHeight = 600): Promise<string> => {
     return new Promise((resolve) => {
       const img = new Image();
       img.src = base64Str;
@@ -69,7 +69,7 @@ const Admin: React.FC<AdminProps> = ({ products, onAddProduct, onUpdateProduct, 
         canvas.height = height;
         const ctx = canvas.getContext('2d');
         ctx?.drawImage(img, 0, 0, width, height);
-        resolve(canvas.toDataURL('image/jpeg', 0.7));
+        resolve(canvas.toDataURL('image/jpeg', 0.5)); // Lower quality for better payload speed
       };
       img.onerror = () => resolve(base64Str);
     });
@@ -145,9 +145,10 @@ const Admin: React.FC<AdminProps> = ({ products, onAddProduct, onUpdateProduct, 
       setImagePreviews([]);
       setIsAdding(false);
     } catch (error: any) {
-      console.error("Submit error:", error);
+      console.error("Full Submit Error Object:", error);
       const errorMessage = error.message || "Bilinmeyen bir hata oluştu.";
-      alert(`Bir hata oluştu: ${errorMessage}\n\nİpucu: Görseller çok büyük olabilir veya veritabanında 'videourl' sütunu eksik olabilir.`);
+      const errorCode = error.code || "";
+      alert(`Ürün Eklenemedi!\n\nHata: ${errorMessage}\nKod: ${errorCode}\n\nİpucu: Eğer kod '42501' ise Supabase'de RLS izinlerini vermeniz gerekir. Eğer kod '413' ise görseller çok büyüktür.`);
     } finally {
       setIsSubmitting(false);
     }
@@ -196,9 +197,10 @@ const Admin: React.FC<AdminProps> = ({ products, onAddProduct, onUpdateProduct, 
       setIsEditing(false);
       setEditingProduct(null);
     } catch (error: any) {
-      console.error("Update error:", error);
+      console.error("Full Update Error Object:", error);
       const errorMessage = error.message || "Bilinmeyen bir hata oluştu.";
-      alert(`Güncelleme sırasında bir hata oluştu: ${errorMessage}\n\nİpucu: Eğer 'Cannot coerce' hatası alıyorsanız, ID uyuşmazlığı veya yetki hatası olabilir. Eğer 'videourl' hatası alıyorsanız veritabanına bu sütunu eklemeniz gerekebilir.`);
+      const errorCode = error.code || "";
+      alert(`Güncelleme Başarısız!\n\nHata: ${errorMessage}\nKod: ${errorCode}\n\nİpucu: 'Cannot coerce' veya '42501' hatası yetki (RLS) sorununa işaret eder.`);
     } finally {
       setIsSubmitting(false);
     }

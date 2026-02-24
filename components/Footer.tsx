@@ -1,8 +1,13 @@
 
 import React from 'react';
 import { Instagram, Facebook, Twitter, Mail } from 'lucide-react';
+import { ViewMode } from '../types';
 
-const Footer: React.FC = () => {
+interface FooterProps {
+  onNavigate: (view: ViewMode) => void;
+}
+
+const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
   return (
     <footer className="bg-white dark:bg-black border-t border-black/5 dark:border-white/5 py-24 px-8">
       <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-16">
@@ -17,10 +22,10 @@ const Footer: React.FC = () => {
         <div>
           <h4 className="text-[10px] uppercase font-black tracking-[0.3em] mb-10 text-orange-600">Servisler</h4>
           <ul className="text-gray-400 text-[10px] space-y-6 font-bold uppercase tracking-[0.2em]">
-            <li><a href="#" className="hover:text-black dark:hover:text-white transition-colors">Teslimat & İade</a></li>
-            <li><a href="#" className="hover:text-black dark:hover:text-white transition-colors">Garanti Şartları</a></li>
-            <li><a href="#" className="hover:text-black dark:hover:text-white transition-colors">Sıkça Sorulan Sorular</a></li>
-            <li><a href="#" className="hover:text-black dark:hover:text-white transition-colors">İletişim</a></li>
+            <li><button onClick={() => onNavigate(ViewMode.INFO_DELIVERY)} className="hover:text-black dark:hover:text-white transition-colors uppercase">Teslimat & İade</button></li>
+            <li><button onClick={() => onNavigate(ViewMode.INFO_WARRANTY)} className="hover:text-black dark:hover:text-white transition-colors uppercase">Garanti Şartları</button></li>
+            <li><button onClick={() => onNavigate(ViewMode.INFO_DISTANCE_SALES)} className="hover:text-black dark:hover:text-white transition-colors uppercase text-left">Mesafeli Satış Sözleşmesi</button></li>
+            <li><button onClick={() => onNavigate(ViewMode.CONTACT)} className="hover:text-black dark:hover:text-white transition-colors uppercase text-left">İletişim & Showroom</button></li>
           </ul>
         </div>
 
@@ -30,7 +35,7 @@ const Footer: React.FC = () => {
             <a href="https://instagram.com" target="_blank" rel="noopener noreferrer"><Instagram className="cursor-pointer hover:text-orange-600" size={20} /></a>
             <a href="https://facebook.com" target="_blank" rel="noopener noreferrer"><Facebook className="cursor-pointer hover:text-orange-600" size={20} /></a>
             <a href="https://twitter.com" target="_blank" rel="noopener noreferrer"><Twitter className="cursor-pointer hover:text-orange-600" size={20} /></a>
-            <a href="mailto:info@avyna.com"><Mail className="cursor-pointer hover:text-orange-600" size={20} /></a>
+            <a href="mailto:theavynaofficial@gmail.com"><Mail className="cursor-pointer hover:text-orange-600" size={20} /></a>
           </div>
           <div className="mt-12">
             <h5 className="text-[9px] uppercase font-black mb-4 tracking-[0.3em] text-gray-400">Koleksiyona Katıl</h5>
@@ -57,8 +62,8 @@ const Footer: React.FC = () => {
       <div className="max-w-7xl mx-auto mt-24 pt-12 border-t border-black/5 dark:border-white/5 flex flex-col md:flex-row justify-between items-center text-[9px] text-gray-400 uppercase tracking-[0.3em] font-black">
         <p>© 2024 Avyna Furniture. Tüm Hakları Saklıdır.</p>
         <div className="flex space-x-8 mt-6 md:mt-0">
-          <a href="#" className="hover:text-black dark:hover:text-white">Gizlilik</a>
-          <a href="#" className="hover:text-black dark:hover:text-white">Şartlar</a>
+          <button onClick={() => onNavigate(ViewMode.INFO_PRIVACY)} className="hover:text-black dark:hover:text-white transition-colors uppercase">Gizlilik & KVKK</button>
+          <button onClick={() => onNavigate(ViewMode.INFO_DISTANCE_SALES)} className="hover:text-black dark:hover:text-white transition-colors uppercase">Şartlar</button>
         </div>
       </div>
     </footer>

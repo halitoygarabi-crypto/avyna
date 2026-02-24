@@ -24,7 +24,7 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(express.static(path.join(__dirname, '../dist')));
 
 // Database Initialization
-const db = new Database('database.db');
+const db = new Database(path.join(__dirname, 'database.db'));
 
 // Create tables
 db.exec(`
@@ -327,7 +327,7 @@ app.post('/payment-success', async (req, res) => {
         console.error('Error updating order status in Supabase:', err.message);
     }
 
-    res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/payment-success`);
+    res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment-success`);
 });
 
 app.post('/payment-fail', (req, res) => {
@@ -346,7 +346,7 @@ app.post('/payment-fail', (req, res) => {
     console.log('Order ID:', oid, 'Response Code:', responseCode, 'Error:', errmsg);
     
     // Redirect to frontend with error message in query params
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
     const redirectUrl = new URL(`${frontendUrl}/payment-fail`);
     redirectUrl.searchParams.append('error', errmsg);
     redirectUrl.searchParams.append('code', responseCode);
@@ -366,8 +366,12 @@ app.get('/payment-fail', (req, res) => {
 });
 
 // Catch-all for other SPA routes
-app.get('/{*path}', (req, res) => {
-    res.sendFile(path.join(__dirname, '../dist/index.html'));
+// Catch-all for other SPA routes (Middleware approach for compatibility)
+app.use((req, res, next) => {
+    if (req.path.startsWith('/api') || req.path.startsWith('/payment-success') || req.path.startsWith('/payment-fail')) {
+        return next();
+    }
+    res.sendFile(path.resolve(__dirname, '../dist/index.html'));
 });
 
 app.listen(port, () => {

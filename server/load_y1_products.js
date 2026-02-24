@@ -1,14 +1,19 @@
-require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
-const { createClient } = require('@supabase/supabase-js');
-const fs = require('fs');
-const path = require('path');
+import * as dotenv from 'dotenv';
+import { createClient } from '@supabase/supabase-js';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-// Supabase configuration
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+dotenv.config({ path: path.join(__dirname, '../.env.local') });
+dotenv.config({ path: path.join(__dirname, '../.env') });
+
 const supabaseUrl = process.env.VITE_SUPABASE_URL || 'https://mdxsasiabwronqkegkuo.supabase.co';
 const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY;
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-// Product data with categories and prices
 const productData = {
     'Bhusra': { category: 'Koltuk', price: 24500, description: 'Modern tasarım, yüksek konfor' },
     'Denise': { category: 'Koltuk', price: 22800, description: 'Şık ve zarif tasarım' },
