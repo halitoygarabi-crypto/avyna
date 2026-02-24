@@ -69,7 +69,7 @@ const Admin: React.FC<AdminProps> = ({ products, onAddProduct, onUpdateProduct, 
         canvas.height = height;
         const ctx = canvas.getContext('2d');
         ctx?.drawImage(img, 0, 0, width, height);
-        resolve(canvas.toDataURL('image/jpeg', 0.5)); // Lower quality for better payload speed
+        resolve(canvas.toDataURL('image/jpeg', 0.3)); // Even lower quality for payload safety
       };
       img.onerror = () => resolve(base64Str);
     });
@@ -126,8 +126,8 @@ const Admin: React.FC<AdminProps> = ({ products, onAddProduct, onUpdateProduct, 
 
     setIsSubmitting(true);
     try {
-      const newProduct: Product = {
-        id: Date.now().toString(),
+      // For new products, we DON'T send an ID so Supabase generates a UUID
+      const newProduct: any = {
         name: formData.name,
         price: Number(formData.price),
         category: formData.category,
@@ -139,16 +139,24 @@ const Admin: React.FC<AdminProps> = ({ products, onAddProduct, onUpdateProduct, 
         dimensions: { width: 100, height: 100, depth: 100 }
       };
 
-      await onAddProduct(newProduct);
+      console.log("Submitting new product...", newProduct.name);
+      await onAddProduct(newProduct as Product);
 
       setFormData({ name: '', price: '', category: 'Oturma Grubu', description: '', stock: '5', images: [], modelUrl: '', videoUrl: '' });
       setImagePreviews([]);
       setIsAdding(false);
+      alert("✅ ÜRÜN BAŞARIYLA KAYDEDİLDİ!");
     } catch (error: any) {
       console.error("Full Submit Error Object:", error);
       const errorMessage = error.message || "Bilinmeyen bir hata oluştu.";
-      const errorCode = error.code || "";
-      alert(`Ürün Eklenemedi!\n\nHata: ${errorMessage}\nKod: ${errorCode}\n\nİpucu: Eğer kod '42501' ise Supabase'de RLS izinlerini vermeniz gerekir. Eğer kod '413' ise görseller çok büyüktür.`);
+      const errorCode = error.code || error.status || "";
+      
+      let hint = "Lütfen internet bağlantınızı ve verilerinizi kontrol edin.";
+      if (errorCode === '42501' || errorMessage.includes('permission')) hint = "Supabase RLS izinleri kapalı olabilir.";
+      if (errorCode === '413' || errorMessage.includes('large')) hint = "Görsel boyutları çok büyük. Lütfen daha küçük veya daha az görsel yükleyin.";
+      if (errorCode === '23505') hint = "Bu isimde bir ürün zaten mevcut olabilir.";
+
+      alert(`❌ ÜRÜN KAYDEDİLEMEDİ!\n\nHata: ${errorMessage}\nKod: ${errorCode}\n\nİpucu: ${hint}`);
     } finally {
       setIsSubmitting(false);
     }
