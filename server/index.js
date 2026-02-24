@@ -97,8 +97,12 @@ app.post('/api/products', async (req, res) => {
     const { name, price, category, description, stock, images, modelUrl, dimensions, videoUrl } = req.body;
     
     try {
+        // Generate a UUID for the product to satisfy Supabase's non-null constraint
+        const productId = crypto.randomUUID();
+
         // 1. Save to Supabase (Source of Truth)
         const dbProduct = {
+            id: productId,
             name,
             price,
             category,
@@ -127,7 +131,7 @@ app.post('/api/products', async (req, res) => {
                 INSERT INTO products (id, name, price, category, description, stock, imageUrl, modelUrl, dimensions)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             `);
-            stmt.run(supData.id, name, price, category, description, stock, JSON.stringify(images), modelUrl, JSON.stringify(dimensions));
+            stmt.run(productId, name, price, category, description, stock, JSON.stringify(images), modelUrl, JSON.stringify(dimensions));
         } catch (sqliteErr) {
             console.warn('SQLite mirror failed, but Supabase succeeded:', sqliteErr.message);
         }
