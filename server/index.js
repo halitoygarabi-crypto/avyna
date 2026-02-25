@@ -74,7 +74,9 @@ app.get('/api/products', async (req, res) => {
                 ...p,
                 images: p.images || [],
                 modelUrl: p.modelurl,
-                videoUrl: p.videourl
+                videoUrl: p.videourl,
+                colors: p.colors || [],
+                fabricProperties: p.fabric_properties || undefined
             }));
             return res.json(mapped);
         }
@@ -94,7 +96,7 @@ app.get('/api/products', async (req, res) => {
 });
 
 app.post('/api/products', async (req, res) => {
-    const { name, price, category, description, stock, images, modelUrl, dimensions, videoUrl } = req.body;
+    const { name, price, category, description, stock, images, modelUrl, dimensions, videoUrl, colors, fabricProperties } = req.body;
     
     try {
         // Generate a UUID for the product to satisfy Supabase's non-null constraint
@@ -111,7 +113,9 @@ app.post('/api/products', async (req, res) => {
             images: images || [],
             modelurl: modelUrl,
             dimensions: dimensions || { width: 100, height: 100, depth: 100 },
-            videourl: videoUrl
+            videourl: videoUrl,
+            colors: colors || [],
+            fabric_properties: fabricProperties || null
         };
 
         const { data: supData, error: supError } = await supabase
@@ -156,6 +160,45 @@ app.delete('/api/products/:id', async (req, res) => {
 
         res.json({ success: true });
     } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// UPDATE product
+app.put('/api/products/:id', async (req, res) => {
+    const { id } = req.params;
+    const { name, price, category, description, stock, images, modelUrl, dimensions, videoUrl, colors, fabricProperties } = req.body;
+    
+    try {
+        const dbProduct = {
+            name,
+            price,
+            category,
+            description,
+            stock,
+            images: images || [],
+            modelurl: modelUrl,
+            dimensions: dimensions || null,
+            videourl: videoUrl,
+            colors: colors || [],
+            fabric_properties: fabricProperties || null
+        };
+
+        const { data: supData, error: supError } = await supabase
+            .from('products')
+            .update(dbProduct)
+            .eq('id', id)
+            .select()
+            .single();
+
+        if (supError) {
+            console.error('Supabase Product Update Error:', supError);
+            throw supError;
+        }
+
+        res.json({ success: true, ...supData });
+    } catch (error) {
+        console.error('Update Product Route Error:', error);
         res.status(500).json({ error: error.message });
     }
 });

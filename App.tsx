@@ -16,6 +16,7 @@ import { Product, ViewMode, CartItem } from './types';
 import { INITIAL_PRODUCTS } from './services/mockData';
 import { ApiService } from './services/api';
 import WhatsAppButton from './components/WhatsAppButton';
+import { slugify, findProductBySlug } from './utils/slug';
 
 const App: React.FC = () => {
   const [view, setView] = useState<ViewMode>(ViewMode.HOME);
@@ -26,39 +27,129 @@ const App: React.FC = () => {
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [paymentCode, setPaymentCode] = useState<string | null>(null);
 
+  // URL → ViewMode mapping
+  const viewModeFromPath = (path: string): ViewMode | null => {
+    if (path === '/' || path === '') return ViewMode.HOME;
+    if (path === '/admin') return ViewMode.ADMIN;
+    if (path === '/danismanlik') return ViewMode.CONSULTANT;
+    if (path === '/sepet') return ViewMode.CART;
+    if (path === '/odeme') return ViewMode.CHECKOUT;
+    if (path === '/deneme-odasi') return ViewMode.TRIAL_ROOM;
+    if (path === '/siparisler') return ViewMode.ORDERS;
+    if (path === '/payment-success') return ViewMode.PAYMENT_SUCCESS;
+    if (path === '/payment-fail') return ViewMode.PAYMENT_FAIL;
+    if (path === '/teslimat') return ViewMode.INFO_DELIVERY;
+    if (path === '/garanti') return ViewMode.INFO_WARRANTY;
+    if (path === '/iletisim') return ViewMode.CONTACT;
+    if (path === '/gizlilik') return ViewMode.INFO_PRIVACY;
+    if (path === '/mesafeli-satis') return ViewMode.INFO_DISTANCE_SALES;
+    if (path.startsWith('/urun/')) return ViewMode.DETAIL;
+    return null;
+  };
+
+  // ViewMode → URL mapping
+  const pathFromViewMode = (v: ViewMode): string => {
+    switch (v) {
+      case ViewMode.HOME: return '/';
+      case ViewMode.ADMIN: return '/admin';
+      case ViewMode.CONSULTANT: return '/danismanlik';
+      case ViewMode.CART: return '/sepet';
+      case ViewMode.CHECKOUT: return '/odeme';
+      case ViewMode.TRIAL_ROOM: return '/deneme-odasi';
+      case ViewMode.ORDERS: return '/siparisler';
+      case ViewMode.PAYMENT_SUCCESS: return '/payment-success';
+      case ViewMode.PAYMENT_FAIL: return '/payment-fail';
+      case ViewMode.INFO_DELIVERY: return '/teslimat';
+      case ViewMode.INFO_WARRANTY: return '/garanti';
+      case ViewMode.CONTACT: return '/iletisim';
+      case ViewMode.INFO_PRIVACY: return '/gizlilik';
+      case ViewMode.INFO_DISTANCE_SALES: return '/mesafeli-satis';
+      default: return '/';
+    }
+  };
+
+  // Ürün slug'ını URL'den çıkar
+  const getSlugFromPath = (path: string): string | null => {
+    const match = path.match(/^\/urun\/([^/?]+)/);
+    return match ? match[1] : null;
+  };
+
   useEffect(() => {
     const fetchProducts = async () => {
       try {
         const backendProducts = await ApiService.getProducts();
         setProducts(backendProducts as Product[]);
+        return backendProducts as Product[];
       } catch (error) {
         console.error("Backend fetch error, falling back to mock:", error);
         setProducts(INITIAL_PRODUCTS);
+        return INITIAL_PRODUCTS;
       } finally {
         setLoading(false);
       }
     };
 
-    fetchProducts();
+    fetchProducts().then((loadedProducts) => {
+      // URL'yi analiz et
+      const path = window.location.pathname;
+      const slug = getSlugFromPath(path);
+
+      if (slug && loadedProducts) {
+        // URL'de ürün slug'ı var → ürünü bul ve göster
+        const found = findProductBySlug(loadedProducts, slug);
+        if (found) {
+          setSelectedProduct(found as Product);
+          setView(ViewMode.DETAIL);
+        }
+      } else {
+        // URL'ye göre view belirle
+        const viewFromUrl = viewModeFromPath(path);
+        if (viewFromUrl) {
+          setView(viewFromUrl);
+
+          if (viewFromUrl === ViewMode.PAYMENT_SUCCESS) {
+            clearCart();
+          } else if (viewFromUrl === ViewMode.PAYMENT_FAIL) {
+            const params = new URLSearchParams(window.location.search);
+            const errorMsg = params.get('error');
+            const errorCode = params.get('code');
+            if (errorMsg) setPaymentError(errorMsg);
+            if (errorCode) setPaymentCode(errorCode);
+          }
+        }
+      }
+    });
 
     const savedCart = localStorage.getItem('avyna_cart');
     if (savedCart) {
       setCart(JSON.parse(savedCart));
     }
 
-    // Check for payment redirects
-    const path = window.location.pathname;
-    if (path === '/payment-success') {
-      setView(ViewMode.PAYMENT_SUCCESS);
-      clearCart();
-    } else if (path === '/payment-fail') {
-      const params = new URLSearchParams(window.location.search);
-      const errorMsg = params.get('error');
-      const errorCode = params.get('code');
-      if (errorMsg) setPaymentError(errorMsg);
-      if (errorCode) setPaymentCode(errorCode);
-      setView(ViewMode.PAYMENT_FAIL);
-    }
+    // Tarayıcı geri/ileri butonları
+    const handlePopState = () => {
+      const path = window.location.pathname;
+      const slug = getSlugFromPath(path);
+
+      if (slug) {
+        const found = findProductBySlug(products, slug);
+        if (found) {
+          setSelectedProduct(found as Product);
+          setView(ViewMode.DETAIL);
+        } else {
+          setView(ViewMode.HOME);
+        }
+      } else {
+        const viewFromUrl = viewModeFromPath(path);
+        if (viewFromUrl) {
+          setView(viewFromUrl);
+          setSelectedProduct(null);
+        }
+      }
+      window.scrollTo(0, 0);
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
   const handleAddProduct = async (p: Product) => {
@@ -143,12 +234,16 @@ const App: React.FC = () => {
   const navigateToDetail = (p: Product) => {
     setSelectedProduct(p);
     setView(ViewMode.DETAIL);
+    const productSlug = slugify(p.name);
+    window.history.pushState({ view: 'detail', slug: productSlug }, '', `/urun/${productSlug}`);
     window.scrollTo(0, 0);
   };
 
   const handleNavigate = (v: ViewMode) => {
     setView(v);
     setSelectedProduct(null);
+    const newPath = pathFromViewMode(v);
+    window.history.pushState({ view: v }, '', newPath);
     window.scrollTo(0, 0);
   };
 

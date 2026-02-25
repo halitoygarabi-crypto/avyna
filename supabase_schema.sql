@@ -9,7 +9,10 @@ CREATE TABLE IF NOT EXISTS products (
   stock INTEGER DEFAULT 0,
   images JSONB,
   modelurl TEXT,
+  videourl TEXT,
   dimensions JSONB,
+  colors JSONB DEFAULT '[]'::jsonb,
+  fabric_properties JSONB,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 

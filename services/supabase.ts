@@ -25,7 +25,9 @@ export const SupabaseService = {
             ...p,
             images: p.images || [],
             modelUrl: p.modelurl,
-            videoUrl: p.videourl
+            videoUrl: p.videourl,
+            colors: p.colors || [],
+            fabricProperties: p.fabric_properties || undefined
         }));
     },
 
@@ -41,7 +43,9 @@ export const SupabaseService = {
             stock: product.stock,
             images: product.images || [],
             modelurl: product.modelUrl,
-            dimensions: product.dimensions
+            dimensions: product.dimensions,
+            colors: product.colors || [],
+            fabric_properties: product.fabricProperties || null
         };
 
         // Only add videourl if it's provided
@@ -70,7 +74,9 @@ export const SupabaseService = {
                     ...returned,
                     images: returned.images || [],
                     modelUrl: returned.modelurl,
-                    videoUrl: returned.videourl
+                    videoUrl: returned.videourl,
+                    colors: returned.colors || [],
+                    fabricProperties: returned.fabric_properties || undefined
                 };
             }
             throw error;
@@ -81,7 +87,9 @@ export const SupabaseService = {
             ...returned,
             images: returned.images || [],
             modelUrl: returned.modelurl,
-            videoUrl: returned.videourl
+            videoUrl: returned.videourl,
+            colors: returned.colors || [],
+            fabricProperties: returned.fabric_properties || undefined
         };
     },
 
@@ -107,7 +115,9 @@ export const SupabaseService = {
             stock: product.stock,
             images: product.images || [],
             modelurl: product.modelUrl,
-            dimensions: product.dimensions
+            dimensions: product.dimensions,
+            colors: product.colors || [],
+            fabric_properties: product.fabricProperties || null
         };
 
         // Only add videourl if it's provided
@@ -140,7 +150,9 @@ export const SupabaseService = {
                     ...retryData,
                     images: retryData.images || [],
                     modelUrl: retryData.modelurl,
-                    videoUrl: retryData.videourl
+                    videoUrl: retryData.videourl,
+                    colors: retryData.colors || [],
+                    fabricProperties: retryData.fabric_properties || undefined
                 };
             }
             
@@ -156,7 +168,9 @@ export const SupabaseService = {
             ...data,
             images: data.images || [],
             modelUrl: data.modelurl,
-            videoUrl: data.videourl
+            videoUrl: data.videourl,
+            colors: data.colors || [],
+            fabricProperties: data.fabric_properties || undefined
         };
     },
 

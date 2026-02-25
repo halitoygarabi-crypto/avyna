@@ -33,6 +33,19 @@ export const ApiService = {
         return { success: true };
     },
 
+    async updateProduct(product: any) {
+        const backendUrl = import.meta.env.VITE_BACKEND_URL || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5000');
+        const response = await fetch(`${backendUrl}/api/products/${product.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(product)
+        });
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to update product');
+        }
+        return await response.json();
+    },
 
     // Orders
     async createOrder(order: any, items: any[]) {

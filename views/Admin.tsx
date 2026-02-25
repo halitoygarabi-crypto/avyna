@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Product, ProductColor, FabricProperties, ViewMode } from '../types';
-import { Plus, Trash2, Sparkles, Upload, Save, Loader2, Package, Box, Copy, Check, Edit, ShoppingBag, Palette, X } from 'lucide-react';
+import { Plus, Trash2, Sparkles, Upload, Save, Loader2, Package, Box, Copy, Check, Edit, ShoppingBag, Palette, X, Ruler } from 'lucide-react';
 import { generateProductDescription } from '../services/openrouterService';
 import { ApiService } from '../services/api';
 
@@ -45,10 +45,11 @@ const Admin: React.FC<AdminProps> = ({ products, onAddProduct, onUpdateProduct, 
     { name: 'Kahve', hex: '#5C3D2E' },
     { name: 'Hardal', hex: '#C49B2A' },
     { name: 'Pudra', hex: '#E8C4C4' },
+    { name: 'Füme', hex: '#4A4A4A' },
   ];
 
-  const FABRIC_TYPES = ['Kadife', 'Keten', 'Deri', 'Suni Deri', 'Chenille', 'Bouclé', 'Microfiber', 'Pamuklu', 'Polyester', 'Süet'];
-  const PILL_RESISTANCE_OPTIONS = ['Çok Yüksek', 'Yüksek', 'Orta', 'Düşük'];
+  const FABRIC_TYPES = ['Kadife', 'Keten', 'Deri', 'Suni Deri', 'Chenille', 'Bouclé', 'Microfiber', 'Pamuklu', 'Polyester', 'Süet', 'Tay Tüyü'];
+  const WARRANTY_OPTIONS = ['1 Yıl', '2 Yıl', '3 Yıl', '5 Yıl', '10 Yıl'];
   const CLEANING_OPTIONS = ['Kuru Temizleme', 'Nemli Bez', 'Makinede Yıkanabilir', 'Profesyonel Temizlik', 'Fırçalama'];
   const ORIGIN_OPTIONS = ['Türkiye', 'İtalya', 'Belçika', 'İspanya', 'Almanya', 'Fransa', 'Çin', 'Hindistan'];
 
@@ -64,13 +65,17 @@ const Admin: React.FC<AdminProps> = ({ products, onAddProduct, onUpdateProduct, 
     colors: [] as ProductColor[],
     fabricType: '',
     fabricComposition: '',
-    fabricPillResistance: '',
+    fabricWarranty: '',
     fabricCleaning: '',
-    fabricOrigin: ''
+    fabricOrigin: '',
+    dimWidth: '',
+    dimHeight: '',
+    dimDepth: ''
   });
 
   const [customColorName, setCustomColorName] = useState('');
   const [customColorHex, setCustomColorHex] = useState('#000000');
+  const [activeColorTab, setActiveColorTab] = useState<string | null>(null); // null = genel görseller
 
   const modelInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -116,20 +121,46 @@ const Admin: React.FC<AdminProps> = ({ products, onAddProduct, onUpdateProduct, 
         });
         const compressed = await compressImage(base64);
 
-        setImagePreviews(prev => [...prev, compressed]);
-        setFormData(prev => ({ ...prev, images: [...prev.images, compressed] }));
+        if (activeColorTab) {
+          // Renk bazlı görsel ekleme
+          setFormData(prev => ({
+            ...prev,
+            colors: prev.colors.map(c =>
+              c.name === activeColorTab
+                ? { ...c, images: [...(c.images || []), compressed] }
+                : c
+            )
+          }));
+        } else {
+          // Genel görsel ekleme
+          setImagePreviews(prev => [...prev, compressed]);
+          setFormData(prev => ({ ...prev, images: [...prev.images, compressed] }));
+        }
       }
     }
   };
 
-  const removeImage = (index: number) => {
-    const updatedPreviews = [...imagePreviews];
-    updatedPreviews.splice(index, 1);
-    setImagePreviews(updatedPreviews);
+  const removeImage = (index: number, colorName?: string) => {
+    if (colorName) {
+      // Renk bazlı görsel silme
+      setFormData(prev => ({
+        ...prev,
+        colors: prev.colors.map(c =>
+          c.name === colorName
+            ? { ...c, images: (c.images || []).filter((_, i) => i !== index) }
+            : c
+        )
+      }));
+    } else {
+      // Genel görsel silme
+      const updatedPreviews = [...imagePreviews];
+      updatedPreviews.splice(index, 1);
+      setImagePreviews(updatedPreviews);
 
-    const updatedImages = [...formData.images];
-    updatedImages.splice(index, 1);
-    setFormData(prev => ({ ...prev, images: updatedImages }));
+      const updatedImages = [...formData.images];
+      updatedImages.splice(index, 1);
+      setFormData(prev => ({ ...prev, images: updatedImages }));
+    }
   };
 
   const handleModelSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -159,7 +190,7 @@ const Admin: React.FC<AdminProps> = ({ products, onAddProduct, onUpdateProduct, 
       const fabricProps: FabricProperties | undefined = formData.fabricType ? {
         type: formData.fabricType,
         composition: formData.fabricComposition,
-        pillResistance: formData.fabricPillResistance,
+        warrantyPeriod: formData.fabricWarranty,
         cleaningInstructions: formData.fabricCleaning,
         origin: formData.fabricOrigin
       } : undefined;
@@ -175,13 +206,17 @@ const Admin: React.FC<AdminProps> = ({ products, onAddProduct, onUpdateProduct, 
         videoUrl: formData.videoUrl || undefined,
         colors: formData.colors.length > 0 ? formData.colors : undefined,
         fabricProperties: fabricProps,
-        dimensions: { width: 100, height: 100, depth: 100 }
+        dimensions: {
+          width: Number(formData.dimWidth) || 100,
+          height: Number(formData.dimHeight) || 80,
+          depth: Number(formData.dimDepth) || 90
+        }
       };
 
       console.log("Submitting new product...", newProduct.name);
       await onAddProduct(newProduct as Product);
 
-      setFormData({ name: '', price: '', category: 'Oturma Grubu', description: '', stock: '5', images: [], modelUrl: '', videoUrl: '', colors: [], fabricType: '', fabricComposition: '', fabricPillResistance: '', fabricCleaning: '', fabricOrigin: '' });
+      setFormData({ name: '', price: '', category: 'Oturma Grubu', description: '', stock: '5', images: [], modelUrl: '', videoUrl: '', colors: [], fabricType: '', fabricComposition: '', fabricWarranty: '', fabricCleaning: '', fabricOrigin: '', dimWidth: '', dimHeight: '', dimDepth: '' });
       setImagePreviews([]);
       setIsAdding(false);
       alert("✅ ÜRÜN BAŞARIYLA KAYDEDİLDİ!");
@@ -215,9 +250,12 @@ const Admin: React.FC<AdminProps> = ({ products, onAddProduct, onUpdateProduct, 
       colors: product.colors || [],
       fabricType: product.fabricProperties?.type || '',
       fabricComposition: product.fabricProperties?.composition || '',
-      fabricPillResistance: product.fabricProperties?.pillResistance || '',
+      fabricWarranty: product.fabricProperties?.warrantyPeriod || '',
       fabricCleaning: product.fabricProperties?.cleaningInstructions || '',
-      fabricOrigin: product.fabricProperties?.origin || ''
+      fabricOrigin: product.fabricProperties?.origin || '',
+      dimWidth: product.dimensions?.width?.toString() || '',
+      dimHeight: product.dimensions?.height?.toString() || '',
+      dimDepth: product.dimensions?.depth?.toString() || ''
     });
     setImagePreviews(product.images || []);
     setIsEditing(true);
@@ -234,7 +272,7 @@ const Admin: React.FC<AdminProps> = ({ products, onAddProduct, onUpdateProduct, 
       const fabricProps: FabricProperties | undefined = formData.fabricType ? {
         type: formData.fabricType,
         composition: formData.fabricComposition,
-        pillResistance: formData.fabricPillResistance,
+        warrantyPeriod: formData.fabricWarranty,
         cleaningInstructions: formData.fabricCleaning,
         origin: formData.fabricOrigin
       } : undefined;
@@ -251,11 +289,16 @@ const Admin: React.FC<AdminProps> = ({ products, onAddProduct, onUpdateProduct, 
         videoUrl: formData.videoUrl || undefined,
         colors: formData.colors.length > 0 ? formData.colors : undefined,
         fabricProperties: fabricProps,
+        dimensions: {
+          width: Number(formData.dimWidth) || editingProduct.dimensions?.width || 100,
+          height: Number(formData.dimHeight) || editingProduct.dimensions?.height || 80,
+          depth: Number(formData.dimDepth) || editingProduct.dimensions?.depth || 90
+        }
       };
 
       await onUpdateProduct(updatedProduct);
 
-      setFormData({ name: '', price: '', category: 'Oturma Grubu', description: '', stock: '5', images: [], modelUrl: '', videoUrl: '', colors: [], fabricType: '', fabricComposition: '', fabricPillResistance: '', fabricCleaning: '', fabricOrigin: '' });
+      setFormData({ name: '', price: '', category: 'Oturma Grubu', description: '', stock: '5', images: [], modelUrl: '', videoUrl: '', colors: [], fabricType: '', fabricComposition: '', fabricWarranty: '', fabricCleaning: '', fabricOrigin: '', dimWidth: '', dimHeight: '', dimDepth: '' });
       setImagePreviews([]);
       setIsEditing(false);
       setEditingProduct(null);
@@ -644,14 +687,14 @@ const Admin: React.FC<AdminProps> = ({ products, onAddProduct, onUpdateProduct, 
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="block text-[8px] uppercase font-bold text-gray-400 tracking-widest">Boncuklanma Direnci</label>
+                    <label className="block text-[8px] uppercase font-bold text-gray-400 tracking-widest">Garanti Süresi</label>
                     <select
-                      value={formData.fabricPillResistance}
-                      onChange={e => setFormData({ ...formData, fabricPillResistance: e.target.value })}
+                      value={formData.fabricWarranty}
+                      onChange={e => setFormData({ ...formData, fabricWarranty: e.target.value })}
                       className="w-full border-b-2 border-black/10 dark:border-white/10 py-2 focus:border-orange-600 outline-none transition-colors bg-white dark:bg-black font-bold uppercase text-xs"
                     >
                       <option value="">Seçiniz...</option>
-                      {PILL_RESISTANCE_OPTIONS.map(p => <option key={p} value={p}>{p}</option>)}
+                      {WARRANTY_OPTIONS.map(p => <option key={p} value={p}>{p}</option>)}
                     </select>
                   </div>
                   <div className="space-y-1">
@@ -679,34 +722,154 @@ const Admin: React.FC<AdminProps> = ({ products, onAddProduct, onUpdateProduct, 
                 </div>
               </div>
 
+              {/* ═══ ÖLÇÜ BİLGİLERİ ═══ */}
+              <div className="space-y-4 md:col-span-2">
+                <div className="flex items-center gap-2 border-b border-black/5 dark:border-white/5 pb-3">
+                  <Ruler className="text-orange-600" size={16} />
+                  <label className="block text-[10px] uppercase font-black text-gray-400 tracking-widest">Ölçü Bilgileri (CM)</label>
+                </div>
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-1">
+                    <label className="block text-[8px] uppercase font-bold text-gray-400 tracking-widest">Genişlik</label>
+                    <input
+                      type="number"
+                      value={formData.dimWidth}
+                      onChange={e => setFormData({ ...formData, dimWidth: e.target.value })}
+                      className="w-full border-b-2 border-black/10 dark:border-white/10 bg-transparent py-2 focus:border-orange-600 outline-none transition-colors font-bold text-xs"
+                      placeholder="cm"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="block text-[8px] uppercase font-bold text-gray-400 tracking-widest">Yükseklik</label>
+                    <input
+                      type="number"
+                      value={formData.dimHeight}
+                      onChange={e => setFormData({ ...formData, dimHeight: e.target.value })}
+                      className="w-full border-b-2 border-black/10 dark:border-white/10 bg-transparent py-2 focus:border-orange-600 outline-none transition-colors font-bold text-xs"
+                      placeholder="cm"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="block text-[8px] uppercase font-bold text-gray-400 tracking-widest">Derinlik</label>
+                    <input
+                      type="number"
+                      value={formData.dimDepth}
+                      onChange={e => setFormData({ ...formData, dimDepth: e.target.value })}
+                      className="w-full border-b-2 border-black/10 dark:border-white/10 bg-transparent py-2 focus:border-orange-600 outline-none transition-colors font-bold text-xs"
+                      placeholder="cm"
+                    />
+                  </div>
+                </div>
+              </div>
+
               <div className="space-y-6">
-                <div className="space-y-2">
-                  <label className="block text-[10px] uppercase font-black text-gray-400 tracking-widest">Dosya & Medya (Görseiler)</label>
+                <div className="space-y-3">
+                  <label className="block text-[10px] uppercase font-black text-gray-400 tracking-widest">Dosya & Medya (Görseller)</label>
+                  
+                  {/* Renk Bazlı Görsel Tab'ları */}
+                  {formData.colors.length > 0 && (
+                    <div className="flex flex-wrap gap-1 border-b border-black/5 dark:border-white/5 pb-2">
+                      <button
+                        type="button"
+                        onClick={() => setActiveColorTab(null)}
+                        className={`px-3 py-1.5 text-[8px] font-black uppercase tracking-widest transition-all ${
+                          activeColorTab === null
+                            ? 'bg-orange-600 text-white'
+                            : 'bg-gray-100 dark:bg-surface-dark text-gray-500 hover:bg-gray-200'
+                        }`}
+                      >
+                        Genel Görseller
+                      </button>
+                      {formData.colors.map((color) => (
+                        <button
+                          key={color.name}
+                          type="button"
+                          onClick={() => setActiveColorTab(color.name)}
+                          className={`px-3 py-1.5 text-[8px] font-black uppercase tracking-widest transition-all flex items-center gap-1.5 ${
+                            activeColorTab === color.name
+                              ? 'bg-orange-600 text-white'
+                              : 'bg-gray-100 dark:bg-surface-dark text-gray-500 hover:bg-gray-200'
+                          }`}
+                        >
+                          <div className="w-3 h-3 rounded-full border border-white/50 shadow-sm" style={{ backgroundColor: color.hex }} />
+                          {color.name}
+                          {(color.images?.length || 0) > 0 && (
+                            <span className="bg-white/20 px-1 rounded text-[7px]">{color.images?.length}</span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Aktif tab bilgisi */}
+                  {activeColorTab && (
+                    <div className="flex items-center gap-2 px-3 py-2 bg-orange-50 dark:bg-orange-900/10 border border-orange-200 dark:border-orange-800">
+                      <div className="w-4 h-4 rounded-full border shadow-sm" style={{ backgroundColor: formData.colors.find(c => c.name === activeColorTab)?.hex }} />
+                      <span className="text-[9px] font-black uppercase tracking-widest text-orange-600">
+                        {activeColorTab} rengi için görseller yükleniyor
+                      </span>
+                    </div>
+                  )}
+
                   <div
                     onClick={() => fileInputRef.current?.click()}
-                    className="relative border-2 border-dashed border-black/10 dark:border-white/10 p-4 min-h-[120px] flex flex-wrap gap-4 items-center justify-center text-gray-400 hover:border-orange-600 transition-all cursor-pointer group"
+                    className={`relative border-2 border-dashed p-4 min-h-[120px] flex flex-wrap gap-4 items-center justify-center text-gray-400 transition-all cursor-pointer group ${
+                      activeColorTab 
+                        ? 'border-orange-300 dark:border-orange-800 hover:border-orange-600' 
+                        : 'border-black/10 dark:border-white/10 hover:border-orange-600'
+                    }`}
                   >
-                    {imagePreviews.length > 0 ? (
-                      imagePreviews.map((preview, idx) => (
-                        <div key={idx} className="relative w-20 h-20 border border-black/5">
-                          <img src={preview} alt={`Preview ${idx}`} className="w-full h-full object-cover" />
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              removeImage(idx);
-                            }}
-                            className="absolute -top-2 -right-2 bg-red-600 text-white rounded-full p-1 hover:bg-black transition-colors"
-                          >
-                            <Trash2 size={12} />
-                          </button>
-                        </div>
-                      ))
+                    {activeColorTab ? (
+                      // Renk bazlı görselleri göster
+                      (() => {
+                        const colorImages = formData.colors.find(c => c.name === activeColorTab)?.images || [];
+                        return colorImages.length > 0 ? (
+                          colorImages.map((preview, idx) => (
+                            <div key={idx} className="relative w-20 h-20 border border-orange-200">
+                              <img src={preview} alt={`${activeColorTab} ${idx}`} className="w-full h-full object-cover" />
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  removeImage(idx, activeColorTab);
+                                }}
+                                className="absolute -top-2 -right-2 bg-red-600 text-white rounded-full p-1 hover:bg-black transition-colors"
+                              >
+                                <Trash2 size={12} />
+                              </button>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="flex flex-col items-center">
+                            <Upload size={20} className="group-hover:text-orange-600 transition-colors" />
+                            <span className="text-[9px] font-black uppercase mt-2 tracking-widest">{activeColorTab} GÖRSELLERİNİ YÜKLE</span>
+                          </div>
+                        );
+                      })()
                     ) : (
-                      <div className="flex flex-col items-center">
-                        <Upload size={20} className="group-hover:text-orange-600 transition-colors" />
-                        <span className="text-[9px] font-black uppercase mt-2 tracking-widest">GÖRSELLERİ YÜKLE</span>
-                      </div>
+                      // Genel görselleri göster
+                      imagePreviews.length > 0 ? (
+                        imagePreviews.map((preview, idx) => (
+                          <div key={idx} className="relative w-20 h-20 border border-black/5">
+                            <img src={preview} alt={`Preview ${idx}`} className="w-full h-full object-cover" />
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                removeImage(idx);
+                              }}
+                              className="absolute -top-2 -right-2 bg-red-600 text-white rounded-full p-1 hover:bg-black transition-colors"
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="flex flex-col items-center">
+                          <Upload size={20} className="group-hover:text-orange-600 transition-colors" />
+                          <span className="text-[9px] font-black uppercase mt-2 tracking-widest">GÖRSELLERİ YÜKLE</span>
+                        </div>
+                      )
                     )}
                     <input
                       type="file"
@@ -982,14 +1145,14 @@ const Admin: React.FC<AdminProps> = ({ products, onAddProduct, onUpdateProduct, 
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="block text-[8px] uppercase font-bold text-gray-400 tracking-widest">Boncuklanma Direnci</label>
+                    <label className="block text-[8px] uppercase font-bold text-gray-400 tracking-widest">Garanti Süresi</label>
                     <select
-                      value={formData.fabricPillResistance}
-                      onChange={e => setFormData({ ...formData, fabricPillResistance: e.target.value })}
+                      value={formData.fabricWarranty}
+                      onChange={e => setFormData({ ...formData, fabricWarranty: e.target.value })}
                       className="w-full border-b-2 border-black/10 dark:border-white/10 py-2 focus:border-blue-600 outline-none transition-colors bg-white dark:bg-black font-bold uppercase text-xs"
                     >
                       <option value="">Seçiniz...</option>
-                      {PILL_RESISTANCE_OPTIONS.map(p => <option key={p} value={p}>{p}</option>)}
+                      {WARRANTY_OPTIONS.map(p => <option key={p} value={p}>{p}</option>)}
                     </select>
                   </div>
                   <div className="space-y-1">
@@ -1017,34 +1180,152 @@ const Admin: React.FC<AdminProps> = ({ products, onAddProduct, onUpdateProduct, 
                 </div>
               </div>
 
+              {/* ═══ ÖLÇÜ BİLGİLERİ ═══ */}
+              <div className="space-y-4 md:col-span-2">
+                <div className="flex items-center gap-2 border-b border-black/5 dark:border-white/5 pb-3">
+                  <Ruler className="text-blue-600" size={16} />
+                  <label className="block text-[10px] uppercase font-black text-gray-400 tracking-widest">Ölçü Bilgileri (CM)</label>
+                </div>
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-1">
+                    <label className="block text-[8px] uppercase font-bold text-gray-400 tracking-widest">Genişlik</label>
+                    <input
+                      type="number"
+                      value={formData.dimWidth}
+                      onChange={e => setFormData({ ...formData, dimWidth: e.target.value })}
+                      className="w-full border-b-2 border-black/10 dark:border-white/10 bg-transparent py-2 focus:border-blue-600 outline-none transition-colors font-bold text-xs"
+                      placeholder="cm"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="block text-[8px] uppercase font-bold text-gray-400 tracking-widest">Yükseklik</label>
+                    <input
+                      type="number"
+                      value={formData.dimHeight}
+                      onChange={e => setFormData({ ...formData, dimHeight: e.target.value })}
+                      className="w-full border-b-2 border-black/10 dark:border-white/10 bg-transparent py-2 focus:border-blue-600 outline-none transition-colors font-bold text-xs"
+                      placeholder="cm"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="block text-[8px] uppercase font-bold text-gray-400 tracking-widest">Derinlik</label>
+                    <input
+                      type="number"
+                      value={formData.dimDepth}
+                      onChange={e => setFormData({ ...formData, dimDepth: e.target.value })}
+                      className="w-full border-b-2 border-black/10 dark:border-white/10 bg-transparent py-2 focus:border-blue-600 outline-none transition-colors font-bold text-xs"
+                      placeholder="cm"
+                    />
+                  </div>
+                </div>
+              </div>
+
               <div className="space-y-6">
-                <div className="space-y-2">
-                  <label className="block text-[10px] uppercase font-black text-gray-400 tracking-widest">Dosya & Medya (Görseiler)</label>
+                <div className="space-y-3">
+                  <label className="block text-[10px] uppercase font-black text-gray-400 tracking-widest">Dosya & Medya (Görseller)</label>
+                  
+                  {/* Renk Bazlı Görsel Tab'ları */}
+                  {formData.colors.length > 0 && (
+                    <div className="flex flex-wrap gap-1 border-b border-black/5 dark:border-white/5 pb-2">
+                      <button
+                        type="button"
+                        onClick={() => setActiveColorTab(null)}
+                        className={`px-3 py-1.5 text-[8px] font-black uppercase tracking-widest transition-all ${
+                          activeColorTab === null
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-gray-100 dark:bg-surface-dark text-gray-500 hover:bg-gray-200'
+                        }`}
+                      >
+                        Genel Görseller
+                      </button>
+                      {formData.colors.map((color) => (
+                        <button
+                          key={color.name}
+                          type="button"
+                          onClick={() => setActiveColorTab(color.name)}
+                          className={`px-3 py-1.5 text-[8px] font-black uppercase tracking-widest transition-all flex items-center gap-1.5 ${
+                            activeColorTab === color.name
+                              ? 'bg-blue-600 text-white'
+                              : 'bg-gray-100 dark:bg-surface-dark text-gray-500 hover:bg-gray-200'
+                          }`}
+                        >
+                          <div className="w-3 h-3 rounded-full border border-white/50 shadow-sm" style={{ backgroundColor: color.hex }} />
+                          {color.name}
+                          {(color.images?.length || 0) > 0 && (
+                            <span className="bg-white/20 px-1 rounded text-[7px]">{color.images?.length}</span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Aktif tab bilgisi */}
+                  {activeColorTab && (
+                    <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800">
+                      <div className="w-4 h-4 rounded-full border shadow-sm" style={{ backgroundColor: formData.colors.find(c => c.name === activeColorTab)?.hex }} />
+                      <span className="text-[9px] font-black uppercase tracking-widest text-blue-600">
+                        {activeColorTab} rengi için görseller yükleniyor
+                      </span>
+                    </div>
+                  )}
+
                   <div
                     onClick={() => fileInputRef.current?.click()}
-                    className="relative border-2 border-dashed border-black/10 dark:border-white/10 p-4 min-h-[120px] flex flex-wrap gap-4 items-center justify-center text-gray-400 hover:border-blue-600 transition-all cursor-pointer group"
+                    className={`relative border-2 border-dashed p-4 min-h-[120px] flex flex-wrap gap-4 items-center justify-center text-gray-400 transition-all cursor-pointer group ${
+                      activeColorTab 
+                        ? 'border-blue-300 dark:border-blue-800 hover:border-blue-600' 
+                        : 'border-black/10 dark:border-white/10 hover:border-blue-600'
+                    }`}
                   >
-                    {imagePreviews.length > 0 ? (
-                      imagePreviews.map((preview, idx) => (
-                        <div key={idx} className="relative w-20 h-20 border border-black/5">
-                          <img src={preview} alt={`Preview ${idx}`} className="w-full h-full object-cover" />
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              removeImage(idx);
-                            }}
-                            className="absolute -top-2 -right-2 bg-red-600 text-white rounded-full p-1 hover:bg-black transition-colors"
-                          >
-                            <Trash2 size={12} />
-                          </button>
-                        </div>
-                      ))
+                    {activeColorTab ? (
+                      (() => {
+                        const colorImages = formData.colors.find(c => c.name === activeColorTab)?.images || [];
+                        return colorImages.length > 0 ? (
+                          colorImages.map((preview, idx) => (
+                            <div key={idx} className="relative w-20 h-20 border border-blue-200">
+                              <img src={preview} alt={`${activeColorTab} ${idx}`} className="w-full h-full object-cover" />
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  removeImage(idx, activeColorTab);
+                                }}
+                                className="absolute -top-2 -right-2 bg-red-600 text-white rounded-full p-1 hover:bg-black transition-colors"
+                              >
+                                <Trash2 size={12} />
+                              </button>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="flex flex-col items-center">
+                            <Upload size={20} className="group-hover:text-blue-600 transition-colors" />
+                            <span className="text-[9px] font-black uppercase mt-2 tracking-widest">{activeColorTab} GÖRSELLERİNİ YÜKLE</span>
+                          </div>
+                        );
+                      })()
                     ) : (
-                      <div className="flex flex-col items-center">
-                        <Upload size={20} className="group-hover:text-blue-600 transition-colors" />
-                        <span className="text-[9px] font-black uppercase mt-2 tracking-widest">GÖRSELLERİ YÜKLE</span>
-                      </div>
+                      imagePreviews.length > 0 ? (
+                        imagePreviews.map((preview, idx) => (
+                          <div key={idx} className="relative w-20 h-20 border border-black/5">
+                            <img src={preview} alt={`Preview ${idx}`} className="w-full h-full object-cover" />
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                removeImage(idx);
+                              }}
+                              className="absolute -top-2 -right-2 bg-red-600 text-white rounded-full p-1 hover:bg-black transition-colors"
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="flex flex-col items-center">
+                          <Upload size={20} className="group-hover:text-blue-600 transition-colors" />
+                          <span className="text-[9px] font-black uppercase mt-2 tracking-widest">GÖRSELLERİ YÜKLE</span>
+                        </div>
+                      )
                     )}
                     <input
                       type="file"

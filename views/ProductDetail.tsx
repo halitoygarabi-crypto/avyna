@@ -1,7 +1,8 @@
 
 import React from 'react';
-import { Product } from '../types';
-import { ChevronLeft, ShoppingBag, Share2, Ruler, Star, ShieldCheck, Truck } from 'lucide-react';
+import { Product, ProductColor } from '../types';
+import { ChevronLeft, ShoppingBag, Share2, Ruler, Star, ShieldCheck, Truck, Link2, Check } from 'lucide-react';
+import { slugify } from '../utils/slug';
 
 interface ProductDetailProps {
   product: Product;
@@ -12,14 +13,79 @@ interface ProductDetailProps {
 const ProductDetail: React.FC<ProductDetailProps> = ({ product, onBack, onAddToCart }) => {
   const [added, setAdded] = React.useState(false);
   const [activeImage, setActiveImage] = React.useState(product.images?.[0] || '');
+  const [selectedColor, setSelectedColor] = React.useState<ProductColor | null>(null);
+  const [linkCopied, setLinkCopied] = React.useState(false);
 
-  const handleShare = () => {
+  // URL'den renk parametresini oku (ilk yükleme)
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const renkParam = params.get('renk');
+    if (renkParam && product.colors) {
+      const foundColor = product.colors.find(
+        c => slugify(c.name) === renkParam || c.name.toLowerCase() === renkParam.toLowerCase()
+      );
+      if (foundColor) {
+        setSelectedColor(foundColor);
+        if (foundColor.images && foundColor.images.length > 0) {
+          setActiveImage(foundColor.images[0]);
+        }
+      }
+    }
+  }, [product]);
+
+  // Ürün URL'sini oluştur
+  const getProductUrl = (color?: ProductColor | null): string => {
+    const base = `${window.location.origin}/urun/${slugify(product.name)}`;
+    if (color) {
+      return `${base}?renk=${slugify(color.name)}`;
+    }
+    return base;
+  };
+
+  // Renk seçildiğinde URL'yi güncelle
+  const updateUrlForColor = (color: ProductColor | null) => {
+    const url = getProductUrl(color);
+    window.history.replaceState(
+      { view: 'detail', slug: slugify(product.name), color: color?.name },
+      '',
+      url
+    );
+  };
+
+  const handleShare = async () => {
+    const shareUrl = getProductUrl(selectedColor);
+    const shareTitle = selectedColor 
+      ? `${product.name} - ${selectedColor.name}` 
+      : product.name;
+    const shareText = `${shareTitle} - ${product.price.toLocaleString('tr-TR')} ₺`;
+
     if (navigator.share) {
-      navigator.share({
-        title: product.name,
-        text: product.description,
-        url: window.location.href
-      });
+      try {
+        await navigator.share({
+          title: shareTitle,
+          text: shareText,
+          url: shareUrl
+        });
+      } catch (err) {
+        // Kullanıcı paylaşımı iptal etti — ses çıkarma
+      }
+    } else {
+      // Paylaşım API yok → Linki kopyala
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        setLinkCopied(true);
+        setTimeout(() => setLinkCopied(false), 2500);
+      } catch {
+        // Fallback
+        const textArea = document.createElement('textarea');
+        textArea.value = shareUrl;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        setLinkCopied(true);
+        setTimeout(() => setLinkCopied(false), 2500);
+      }
     }
   };
 
@@ -40,11 +106,35 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ product, onBack, onAddToC
           <ChevronLeft size={20} className="md:w-6 md:h-6" />
         </button>
         <span className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.3em] md:tracking-[0.4em] text-gray-400">Ürün Tanımı / {product.name}</span>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleShare}
+            className={`size-10 md:size-12 flex items-center justify-center border transition-all ${
+              linkCopied 
+                ? 'border-green-500 bg-green-500 text-white' 
+                : 'border-black/5 dark:border-white/5 hover:border-orange-600'
+            }`}
+            title={linkCopied ? 'Link kopyalandı!' : 'Paylaş'}
+          >
+            {linkCopied ? <Check size={18} className="md:w-5 md:h-5" /> : <Share2 size={18} className="md:w-5 md:h-5" />}
+          </button>
+        </div>
+      </div>
+      {/* URL Bar - Shareable Link */}
+      <div className="bg-gray-50 dark:bg-surface-dark border-b border-black/5 dark:border-white/5 px-4 md:px-6 py-2 flex items-center gap-3">
+        <Link2 size={14} className="text-gray-400 flex-shrink-0" />
+        <span className="text-[8px] md:text-[9px] font-mono text-gray-500 truncate flex-1">
+          {getProductUrl(selectedColor)}
+        </span>
         <button
           onClick={handleShare}
-          className="size-10 md:size-12 flex items-center justify-center border border-black/5 dark:border-white/5 hover:border-orange-600 transition-colors"
+          className={`text-[8px] font-black uppercase tracking-widest px-3 py-1 transition-all flex-shrink-0 ${
+            linkCopied 
+              ? 'text-green-600 bg-green-50' 
+              : 'text-orange-600 hover:bg-orange-50'
+          }`}
         >
-          <Share2 size={18} className="md:w-5 md:h-5" />
+          {linkCopied ? '✓ Kopyalandı' : 'Kopyala'}
         </button>
       </div>
 
@@ -74,15 +164,20 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ product, onBack, onAddToC
 
             {/* Product Thumbnails */}
             <div className="grid grid-cols-4 gap-3 md:gap-4 border-t border-black/5 pt-6 md:pt-8">
-              {product.images?.map((img, i) => (
-                <div
-                  key={i}
-                  onClick={() => setActiveImage(img)}
-                  className={`aspect-square bg-gray-50 dark:bg-surface-dark border transition-colors p-1 cursor-pointer ${activeImage === img ? 'border-orange-600' : 'border-black/5 dark:border-white/5'}`}
-                >
-                  <img src={img} className="w-full h-full object-cover grayscale hover:grayscale-0 transition-all" alt={`${product.name} ${i + 1}`} />
-                </div>
-              ))}
+              {(() => {
+                const displayImages = selectedColor?.images && selectedColor.images.length > 0
+                  ? selectedColor.images
+                  : product.images || [];
+                return displayImages.map((img, i) => (
+                  <div
+                    key={i}
+                    onClick={() => setActiveImage(img)}
+                    className={`aspect-square bg-gray-50 dark:bg-surface-dark border transition-colors p-1 cursor-pointer ${activeImage === img ? 'border-orange-600' : 'border-black/5 dark:border-white/5'}`}
+                  >
+                    <img src={img} className="w-full h-full object-cover grayscale hover:grayscale-0 transition-all" alt={`${product.name} ${i + 1}`} />
+                  </div>
+                ));
+              })()}
               {product.videoUrl && (
                 <div
                   onClick={() => setActiveImage('VIDEO')}
@@ -168,15 +263,62 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ product, onBack, onAddToC
                   <h3 className="text-[10px] md:text-xs font-black uppercase tracking-widest mb-4">Mevcut Renk Seçenekleri</h3>
                   <div className="flex flex-wrap gap-4">
                     {product.colors.map((color, i) => (
-                      <div key={i} className="flex flex-col items-center gap-2 group cursor-pointer">
+                      <div 
+                        key={i} 
+                        className={`flex flex-col items-center gap-2 group cursor-pointer transition-all ${
+                          selectedColor?.name === color.name ? 'scale-110' : ''
+                        }`}
+                        onClick={() => {
+                          if (selectedColor?.name === color.name) {
+                            setSelectedColor(null);
+                            setActiveImage(product.images?.[0] || '');
+                            updateUrlForColor(null);
+                          } else {
+                            setSelectedColor(color);
+                            if (color.images && color.images.length > 0) {
+                              setActiveImage(color.images[0]);
+                            }
+                            updateUrlForColor(color);
+                          }
+                        }}
+                      >
                         <div 
-                          className="size-8 md:size-10 rounded-full border border-black/5 shadow-sm p-0.5 transition-transform group-hover:scale-110"
+                          className={`size-8 md:size-10 rounded-full border-2 shadow-sm p-0.5 transition-all group-hover:scale-110 ${
+                            selectedColor?.name === color.name 
+                              ? 'border-orange-600 ring-2 ring-orange-600/30' 
+                              : 'border-black/5'
+                          }`}
                           style={{ backgroundColor: color.hex }}
                         />
-                        <span className="text-[7px] md:text-[8px] font-black uppercase tracking-widest text-gray-400 group-hover:text-black transition-colors">{color.name}</span>
+                        <span className={`text-[7px] md:text-[8px] font-black uppercase tracking-widest transition-colors ${
+                          selectedColor?.name === color.name ? 'text-orange-600' : 'text-gray-400 group-hover:text-black'
+                        }`}>{color.name}</span>
+                        {color.images && color.images.length > 0 && (
+                          <span className="text-[6px] uppercase tracking-widest text-orange-600 font-bold">
+                            {color.images.length} Görsel
+                          </span>
+                        )}
                       </div>
                     ))}
                   </div>
+                  {selectedColor && (
+                    <div className="mt-3 flex items-center gap-2 px-3 py-2 bg-orange-50 dark:bg-orange-900/10 border border-orange-200">
+                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: selectedColor.hex }} />
+                      <span className="text-[8px] font-black uppercase tracking-widest text-orange-600">
+                        {selectedColor.name} seçili
+                      </span>
+                      <button
+                        onClick={() => {
+                          setSelectedColor(null);
+                          setActiveImage(product.images?.[0] || '');
+                          updateUrlForColor(null);
+                        }}
+                        className="ml-auto text-[8px] font-black uppercase tracking-widest text-gray-400 hover:text-black"
+                      >
+                        Temizle
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -200,10 +342,10 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ product, onBack, onAddToC
                         <p className="text-[10px] md:text-xs font-black uppercase">{product.fabricProperties.composition}</p>
                       </div>
                     )}
-                    {product.fabricProperties.pillResistance && (
+                    {product.fabricProperties.warrantyPeriod && (
                       <div>
-                        <p className="text-[7px] md:text-[8px] uppercase text-gray-400 font-bold tracking-[0.2em] mb-1">Dayanıklılık</p>
-                        <p className="text-[10px] md:text-xs font-black uppercase">{product.fabricProperties.pillResistance} Seviye</p>
+                        <p className="text-[7px] md:text-[8px] uppercase text-gray-400 font-bold tracking-[0.2em] mb-1">Garanti</p>
+                        <p className="text-[10px] md:text-xs font-black uppercase text-orange-600">{product.fabricProperties.warrantyPeriod}</p>
                       </div>
                     )}
                     {product.fabricProperties.cleaningInstructions && (

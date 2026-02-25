@@ -2,12 +2,13 @@
 export interface ProductColor {
   name: string;
   hex: string;
+  images?: string[]; // Her renk için opsiyonel görseller
 }
 
 export interface FabricProperties {
   type: string;           // e.g. "Kadife", "Keten", "Deri", "Chenille"
   composition: string;    // e.g. "80% Polyester, 20% Pamuk"
-  pillResistance: string; // e.g. "Yüksek", "Orta", "Düşük"
+  warrantyPeriod: string; // e.g. "2 Yıl", "5 Yıl"
   cleaningInstructions: string; // e.g. "Kuru Temizleme"
   origin: string;         // e.g. "İtalya", "Türkiye"
 }
