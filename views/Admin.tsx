@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
-import { Product, ViewMode } from '../types';
-import { Plus, Trash2, Sparkles, Upload, Save, Loader2, Package, Box, Copy, Check, Edit, ShoppingBag } from 'lucide-react';
+import { Product, ProductColor, FabricProperties, ViewMode } from '../types';
+import { Plus, Trash2, Sparkles, Upload, Save, Loader2, Package, Box, Copy, Check, Edit, ShoppingBag, Palette, X } from 'lucide-react';
 import { generateProductDescription } from '../services/openrouterService';
 import { ApiService } from '../services/api';
 
@@ -32,6 +32,26 @@ const Admin: React.FC<AdminProps> = ({ products, onAddProduct, onUpdateProduct, 
   const [copied, setCopied] = useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
+  const PRESET_COLORS: ProductColor[] = [
+    { name: 'Krem', hex: '#F5F0E8' },
+    { name: 'Bej', hex: '#C8B89A' },
+    { name: 'Antrasit', hex: '#3C3C3C' },
+    { name: 'Siyah', hex: '#1A1A1A' },
+    { name: 'Beyaz', hex: '#FAFAFA' },
+    { name: 'Lacivert', hex: '#1B2A4A' },
+    { name: 'Bordo', hex: '#6B1D2A' },
+    { name: 'Yeşil', hex: '#2D4A3E' },
+    { name: 'Gri', hex: '#8C8C8C' },
+    { name: 'Kahve', hex: '#5C3D2E' },
+    { name: 'Hardal', hex: '#C49B2A' },
+    { name: 'Pudra', hex: '#E8C4C4' },
+  ];
+
+  const FABRIC_TYPES = ['Kadife', 'Keten', 'Deri', 'Suni Deri', 'Chenille', 'Bouclé', 'Microfiber', 'Pamuklu', 'Polyester', 'Süet'];
+  const PILL_RESISTANCE_OPTIONS = ['Çok Yüksek', 'Yüksek', 'Orta', 'Düşük'];
+  const CLEANING_OPTIONS = ['Kuru Temizleme', 'Nemli Bez', 'Makinede Yıkanabilir', 'Profesyonel Temizlik', 'Fırçalama'];
+  const ORIGIN_OPTIONS = ['Türkiye', 'İtalya', 'Belçika', 'İspanya', 'Almanya', 'Fransa', 'Çin', 'Hindistan'];
+
   const [formData, setFormData] = useState({
     name: '',
     price: '',
@@ -40,8 +60,17 @@ const Admin: React.FC<AdminProps> = ({ products, onAddProduct, onUpdateProduct, 
     stock: '5',
     images: [] as string[],
     modelUrl: '',
-    videoUrl: ''
+    videoUrl: '',
+    colors: [] as ProductColor[],
+    fabricType: '',
+    fabricComposition: '',
+    fabricPillResistance: '',
+    fabricCleaning: '',
+    fabricOrigin: ''
   });
+
+  const [customColorName, setCustomColorName] = useState('');
+  const [customColorHex, setCustomColorHex] = useState('#000000');
 
   const modelInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -127,6 +156,14 @@ const Admin: React.FC<AdminProps> = ({ products, onAddProduct, onUpdateProduct, 
     setIsSubmitting(true);
     try {
       // For new products, we DON'T send an ID so Supabase generates a UUID
+      const fabricProps: FabricProperties | undefined = formData.fabricType ? {
+        type: formData.fabricType,
+        composition: formData.fabricComposition,
+        pillResistance: formData.fabricPillResistance,
+        cleaningInstructions: formData.fabricCleaning,
+        origin: formData.fabricOrigin
+      } : undefined;
+
       const newProduct: any = {
         name: formData.name,
         price: Number(formData.price),
@@ -136,13 +173,15 @@ const Admin: React.FC<AdminProps> = ({ products, onAddProduct, onUpdateProduct, 
         images: formData.images.length > 0 ? formData.images : ['https://picsum.photos/seed/' + formData.name + '/800/600'],
         modelUrl: formData.modelUrl || 'https://modelviewer.dev/shared-assets/models/Astronaut.glb',
         videoUrl: formData.videoUrl || undefined,
+        colors: formData.colors.length > 0 ? formData.colors : undefined,
+        fabricProperties: fabricProps,
         dimensions: { width: 100, height: 100, depth: 100 }
       };
 
       console.log("Submitting new product...", newProduct.name);
       await onAddProduct(newProduct as Product);
 
-      setFormData({ name: '', price: '', category: 'Oturma Grubu', description: '', stock: '5', images: [], modelUrl: '', videoUrl: '' });
+      setFormData({ name: '', price: '', category: 'Oturma Grubu', description: '', stock: '5', images: [], modelUrl: '', videoUrl: '', colors: [], fabricType: '', fabricComposition: '', fabricPillResistance: '', fabricCleaning: '', fabricOrigin: '' });
       setImagePreviews([]);
       setIsAdding(false);
       alert("✅ ÜRÜN BAŞARIYLA KAYDEDİLDİ!");
@@ -172,7 +211,13 @@ const Admin: React.FC<AdminProps> = ({ products, onAddProduct, onUpdateProduct, 
       stock: product.stock.toString(),
       images: product.images || [],
       modelUrl: product.modelUrl || '',
-      videoUrl: product.videoUrl || ''
+      videoUrl: product.videoUrl || '',
+      colors: product.colors || [],
+      fabricType: product.fabricProperties?.type || '',
+      fabricComposition: product.fabricProperties?.composition || '',
+      fabricPillResistance: product.fabricProperties?.pillResistance || '',
+      fabricCleaning: product.fabricProperties?.cleaningInstructions || '',
+      fabricOrigin: product.fabricProperties?.origin || ''
     });
     setImagePreviews(product.images || []);
     setIsEditing(true);
@@ -186,6 +231,14 @@ const Admin: React.FC<AdminProps> = ({ products, onAddProduct, onUpdateProduct, 
 
     setIsSubmitting(true);
     try {
+      const fabricProps: FabricProperties | undefined = formData.fabricType ? {
+        type: formData.fabricType,
+        composition: formData.fabricComposition,
+        pillResistance: formData.fabricPillResistance,
+        cleaningInstructions: formData.fabricCleaning,
+        origin: formData.fabricOrigin
+      } : undefined;
+
       const updatedProduct: Product = {
         ...editingProduct,
         name: formData.name,
@@ -196,11 +249,13 @@ const Admin: React.FC<AdminProps> = ({ products, onAddProduct, onUpdateProduct, 
         images: formData.images.length > 0 ? formData.images : editingProduct.images,
         modelUrl: formData.modelUrl || editingProduct.modelUrl,
         videoUrl: formData.videoUrl || undefined,
+        colors: formData.colors.length > 0 ? formData.colors : undefined,
+        fabricProperties: fabricProps,
       };
 
       await onUpdateProduct(updatedProduct);
 
-      setFormData({ name: '', price: '', category: 'Oturma Grubu', description: '', stock: '5', images: [], modelUrl: '', videoUrl: '' });
+      setFormData({ name: '', price: '', category: 'Oturma Grubu', description: '', stock: '5', images: [], modelUrl: '', videoUrl: '', colors: [], fabricType: '', fabricComposition: '', fabricPillResistance: '', fabricCleaning: '', fabricOrigin: '' });
       setImagePreviews([]);
       setIsEditing(false);
       setEditingProduct(null);
@@ -471,6 +526,159 @@ const Admin: React.FC<AdminProps> = ({ products, onAddProduct, onUpdateProduct, 
                 </div>
               </div>
 
+              {/* ═══ RENK SEÇENEKLERİ ═══ */}
+              <div className="space-y-4 md:col-span-2">
+                <div className="flex items-center gap-2 border-b border-black/5 dark:border-white/5 pb-3">
+                  <Palette size={16} className="text-orange-600" />
+                  <label className="block text-[10px] uppercase font-black text-gray-400 tracking-widest">Renk Seçenekleri</label>
+                </div>
+                
+                {/* Selected Colors */}
+                {formData.colors.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {formData.colors.map((color, idx) => (
+                      <div key={idx} className="flex items-center gap-2 bg-gray-50 dark:bg-surface-dark border border-black/5 dark:border-white/5 px-3 py-2 group hover:border-red-300 transition-colors">
+                        <div className="w-5 h-5 rounded-full border-2 border-white shadow-md" style={{ backgroundColor: color.hex }} />
+                        <span className="text-[10px] font-bold uppercase tracking-wider">{color.name}</span>
+                        <button
+                          type="button"
+                          onClick={() => setFormData(prev => ({ ...prev, colors: prev.colors.filter((_, i) => i !== idx) }))}
+                          className="text-gray-300 hover:text-red-600 transition-colors ml-1"
+                        >
+                          <X size={12} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Preset Colors Grid */}
+                <div className="flex flex-wrap gap-2">
+                  {PRESET_COLORS.map((color) => {
+                    const isSelected = formData.colors.some(c => c.hex === color.hex);
+                    return (
+                      <button
+                        key={color.hex}
+                        type="button"
+                        onClick={() => {
+                          if (isSelected) {
+                            setFormData(prev => ({ ...prev, colors: prev.colors.filter(c => c.hex !== color.hex) }));
+                          } else {
+                            setFormData(prev => ({ ...prev, colors: [...prev.colors, color] }));
+                          }
+                        }}
+                        className={`flex items-center gap-2 px-3 py-2 border-2 transition-all text-[9px] font-bold uppercase tracking-wider ${isSelected ? 'border-orange-600 bg-orange-50 dark:bg-orange-900/10' : 'border-black/5 dark:border-white/5 hover:border-black/20'}`}
+                        title={color.name}
+                      >
+                        <div className="w-4 h-4 rounded-full border border-black/10 shadow-sm" style={{ backgroundColor: color.hex }} />
+                        {color.name}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Custom Color Input */}
+                <div className="flex items-end gap-3 mt-3">
+                  <div className="flex-1 space-y-1">
+                    <label className="block text-[8px] uppercase font-bold text-gray-400 tracking-widest">Özel Renk Adı</label>
+                    <input
+                      type="text"
+                      value={customColorName}
+                      onChange={e => setCustomColorName(e.target.value)}
+                      className="w-full border-b border-black/10 dark:border-white/10 bg-transparent py-2 focus:border-orange-600 outline-none transition-colors font-bold text-xs uppercase tracking-wider"
+                      placeholder="örn: Petrol Mavisi"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="block text-[8px] uppercase font-bold text-gray-400 tracking-widest">Renk Kodu</label>
+                    <input
+                      type="color"
+                      value={customColorHex}
+                      onChange={e => setCustomColorHex(e.target.value)}
+                      className="w-12 h-10 cursor-pointer border border-black/10 bg-transparent"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (customColorName.trim()) {
+                        setFormData(prev => ({ ...prev, colors: [...prev.colors, { name: customColorName.trim(), hex: customColorHex }] }));
+                        setCustomColorName('');
+                        setCustomColorHex('#000000');
+                      }
+                    }}
+                    className="px-4 py-2 bg-black dark:bg-white text-white dark:text-black text-[9px] font-black uppercase tracking-widest hover:bg-orange-600 dark:hover:bg-orange-600 dark:hover:text-white transition-all h-10"
+                  >
+                    Ekle
+                  </button>
+                </div>
+              </div>
+
+              {/* ═══ KUMAŞ ÖZELLİKLERİ ═══ */}
+              <div className="space-y-4 md:col-span-2">
+                <div className="flex items-center gap-2 border-b border-black/5 dark:border-white/5 pb-3">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-orange-600"><path d="M3 6c3-1 7-1 9 0s6 1 9 0"/><path d="M3 12c3-1 7-1 9 0s6 1 9 0"/><path d="M3 18c3-1 7-1 9 0s6 1 9 0"/><path d="M3 6v12"/><path d="M21 6v12"/></svg>
+                  <label className="block text-[10px] uppercase font-black text-gray-400 tracking-widest">Kumaş Özellikleri</label>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="space-y-1">
+                    <label className="block text-[8px] uppercase font-bold text-gray-400 tracking-widest">Kumaş Türü</label>
+                    <select
+                      value={formData.fabricType}
+                      onChange={e => setFormData({ ...formData, fabricType: e.target.value })}
+                      className="w-full border-b-2 border-black/10 dark:border-white/10 py-2 focus:border-orange-600 outline-none transition-colors bg-white dark:bg-black font-bold uppercase text-xs"
+                    >
+                      <option value="">Seçiniz...</option>
+                      {FABRIC_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="block text-[8px] uppercase font-bold text-gray-400 tracking-widest">Kumaş Kompozisyonu</label>
+                    <input
+                      type="text"
+                      value={formData.fabricComposition}
+                      onChange={e => setFormData({ ...formData, fabricComposition: e.target.value })}
+                      className="w-full border-b-2 border-black/10 dark:border-white/10 bg-transparent py-2 focus:border-orange-600 outline-none transition-colors font-bold text-xs"
+                      placeholder="örn: 80% Polyester, 20% Pamuk"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="block text-[8px] uppercase font-bold text-gray-400 tracking-widest">Boncuklanma Direnci</label>
+                    <select
+                      value={formData.fabricPillResistance}
+                      onChange={e => setFormData({ ...formData, fabricPillResistance: e.target.value })}
+                      className="w-full border-b-2 border-black/10 dark:border-white/10 py-2 focus:border-orange-600 outline-none transition-colors bg-white dark:bg-black font-bold uppercase text-xs"
+                    >
+                      <option value="">Seçiniz...</option>
+                      {PILL_RESISTANCE_OPTIONS.map(p => <option key={p} value={p}>{p}</option>)}
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="block text-[8px] uppercase font-bold text-gray-400 tracking-widest">Temizlik Talimatı</label>
+                    <select
+                      value={formData.fabricCleaning}
+                      onChange={e => setFormData({ ...formData, fabricCleaning: e.target.value })}
+                      className="w-full border-b-2 border-black/10 dark:border-white/10 py-2 focus:border-orange-600 outline-none transition-colors bg-white dark:bg-black font-bold uppercase text-xs"
+                    >
+                      <option value="">Seçiniz...</option>
+                      {CLEANING_OPTIONS.map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="block text-[8px] uppercase font-bold text-gray-400 tracking-widest">Menşei</label>
+                    <select
+                      value={formData.fabricOrigin}
+                      onChange={e => setFormData({ ...formData, fabricOrigin: e.target.value })}
+                      className="w-full border-b-2 border-black/10 dark:border-white/10 py-2 focus:border-orange-600 outline-none transition-colors bg-white dark:bg-black font-bold uppercase text-xs"
+                    >
+                      <option value="">Seçiniz...</option>
+                      {ORIGIN_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+                    </select>
+                  </div>
+                </div>
+              </div>
+
               <div className="space-y-6">
                 <div className="space-y-2">
                   <label className="block text-[10px] uppercase font-black text-gray-400 tracking-widest">Dosya & Medya (Görseiler)</label>
@@ -599,7 +807,7 @@ const Admin: React.FC<AdminProps> = ({ products, onAddProduct, onUpdateProduct, 
               onClick={() => {
                 setIsEditing(false);
                 setEditingProduct(null);
-                setFormData({ name: '', price: '', category: 'Oturma Grubu', description: '', stock: '5', images: [], modelUrl: '', videoUrl: '' });
+                setFormData({ name: '', price: '', category: 'Oturma Grubu', description: '', stock: '5', images: [], modelUrl: '', videoUrl: '', colors: [], fabricType: '', fabricComposition: '', fabricPillResistance: '', fabricCleaning: '', fabricOrigin: '' });
                 setImagePreviews([]);
               }}
               className="text-gray-400 hover:text-red-600 text-sm uppercase tracking-widest font-bold"
@@ -653,6 +861,159 @@ const Admin: React.FC<AdminProps> = ({ products, onAddProduct, onUpdateProduct, 
                     onChange={e => setFormData({ ...formData, stock: e.target.value })}
                     className="w-full border-b-2 border-black/10 dark:border-white/10 bg-transparent py-3 focus:border-blue-600 outline-none transition-colors font-bold text-sm"
                   />
+                </div>
+              </div>
+
+              {/* ═══ RENK SEÇENEKLERİ ═══ */}
+              <div className="space-y-4 md:col-span-2">
+                <div className="flex items-center gap-2 border-b border-black/5 dark:border-white/5 pb-3">
+                  <Palette size={16} className="text-blue-600" />
+                  <label className="block text-[10px] uppercase font-black text-gray-400 tracking-widest">Renk Seçenekleri</label>
+                </div>
+                
+                {/* Selected Colors */}
+                {formData.colors.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {formData.colors.map((color, idx) => (
+                      <div key={idx} className="flex items-center gap-2 bg-gray-50 dark:bg-surface-dark border border-black/5 dark:border-white/5 px-3 py-2 group hover:border-red-300 transition-colors">
+                        <div className="w-5 h-5 rounded-full border-2 border-white shadow-md" style={{ backgroundColor: color.hex }} />
+                        <span className="text-[10px] font-bold uppercase tracking-wider">{color.name}</span>
+                        <button
+                          type="button"
+                          onClick={() => setFormData(prev => ({ ...prev, colors: prev.colors.filter((_, i) => i !== idx) }))}
+                          className="text-gray-300 hover:text-red-600 transition-colors ml-1"
+                        >
+                          <X size={12} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Preset Colors Grid */}
+                <div className="flex flex-wrap gap-2">
+                  {PRESET_COLORS.map((color) => {
+                    const isSelected = formData.colors.some(c => c.hex === color.hex);
+                    return (
+                      <button
+                        key={color.hex}
+                        type="button"
+                        onClick={() => {
+                          if (isSelected) {
+                            setFormData(prev => ({ ...prev, colors: prev.colors.filter(c => c.hex !== color.hex) }));
+                          } else {
+                            setFormData(prev => ({ ...prev, colors: [...prev.colors, color] }));
+                          }
+                        }}
+                        className={`flex items-center gap-2 px-3 py-2 border-2 transition-all text-[9px] font-bold uppercase tracking-wider ${isSelected ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/10' : 'border-black/5 dark:border-white/5 hover:border-black/20'}`}
+                        title={color.name}
+                      >
+                        <div className="w-4 h-4 rounded-full border border-black/10 shadow-sm" style={{ backgroundColor: color.hex }} />
+                        {color.name}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Custom Color Input */}
+                <div className="flex items-end gap-3 mt-3">
+                  <div className="flex-1 space-y-1">
+                    <label className="block text-[8px] uppercase font-bold text-gray-400 tracking-widest">Özel Renk Adı</label>
+                    <input
+                      type="text"
+                      value={customColorName}
+                      onChange={e => setCustomColorName(e.target.value)}
+                      className="w-full border-b border-black/10 dark:border-white/10 bg-transparent py-2 focus:border-blue-600 outline-none transition-colors font-bold text-xs uppercase tracking-wider"
+                      placeholder="örn: Petrol Mavisi"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="block text-[8px] uppercase font-bold text-gray-400 tracking-widest">Renk Kodu</label>
+                    <input
+                      type="color"
+                      value={customColorHex}
+                      onChange={e => setCustomColorHex(e.target.value)}
+                      className="w-12 h-10 cursor-pointer border border-black/10 bg-transparent"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (customColorName.trim()) {
+                        setFormData(prev => ({ ...prev, colors: [...prev.colors, { name: customColorName.trim(), hex: customColorHex }] }));
+                        setCustomColorName('');
+                        setCustomColorHex('#000000');
+                      }
+                    }}
+                    className="px-4 py-2 bg-black dark:bg-white text-white dark:text-black text-[9px] font-black uppercase tracking-widest hover:bg-blue-600 dark:hover:bg-blue-600 dark:hover:text-white transition-all h-10"
+                  >
+                    Ekle
+                  </button>
+                </div>
+              </div>
+
+              {/* ═══ KUMAŞ ÖZELLİKLERİ ═══ */}
+              <div className="space-y-4 md:col-span-2">
+                <div className="flex items-center gap-2 border-b border-black/5 dark:border-white/5 pb-3">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-600"><path d="M3 6c3-1 7-1 9 0s6 1 9 0"/><path d="M3 12c3-1 7-1 9 0s6 1 9 0"/><path d="M3 18c3-1 7-1 9 0s6 1 9 0"/><path d="M3 6v12"/><path d="M21 6v12"/></svg>
+                  <label className="block text-[10px] uppercase font-black text-gray-400 tracking-widest">Kumaş Özellikleri</label>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="space-y-1">
+                    <label className="block text-[8px] uppercase font-bold text-gray-400 tracking-widest">Kumaş Türü</label>
+                    <select
+                      value={formData.fabricType}
+                      onChange={e => setFormData({ ...formData, fabricType: e.target.value })}
+                      className="w-full border-b-2 border-black/10 dark:border-white/10 py-2 focus:border-blue-600 outline-none transition-colors bg-white dark:bg-black font-bold uppercase text-xs"
+                    >
+                      <option value="">Seçiniz...</option>
+                      {FABRIC_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="block text-[8px] uppercase font-bold text-gray-400 tracking-widest">Kumaş Kompozisyonu</label>
+                    <input
+                      type="text"
+                      value={formData.fabricComposition}
+                      onChange={e => setFormData({ ...formData, fabricComposition: e.target.value })}
+                      className="w-full border-b-2 border-black/10 dark:border-white/10 bg-transparent py-2 focus:border-blue-600 outline-none transition-colors font-bold text-xs"
+                      placeholder="örn: 80% Polyester, 20% Pamuk"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="block text-[8px] uppercase font-bold text-gray-400 tracking-widest">Boncuklanma Direnci</label>
+                    <select
+                      value={formData.fabricPillResistance}
+                      onChange={e => setFormData({ ...formData, fabricPillResistance: e.target.value })}
+                      className="w-full border-b-2 border-black/10 dark:border-white/10 py-2 focus:border-blue-600 outline-none transition-colors bg-white dark:bg-black font-bold uppercase text-xs"
+                    >
+                      <option value="">Seçiniz...</option>
+                      {PILL_RESISTANCE_OPTIONS.map(p => <option key={p} value={p}>{p}</option>)}
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="block text-[8px] uppercase font-bold text-gray-400 tracking-widest">Temizlik Talimatı</label>
+                    <select
+                      value={formData.fabricCleaning}
+                      onChange={e => setFormData({ ...formData, fabricCleaning: e.target.value })}
+                      className="w-full border-b-2 border-black/10 dark:border-white/10 py-2 focus:border-blue-600 outline-none transition-colors bg-white dark:bg-black font-bold uppercase text-xs"
+                    >
+                      <option value="">Seçiniz...</option>
+                      {CLEANING_OPTIONS.map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="block text-[8px] uppercase font-bold text-gray-400 tracking-widest">Menşei</label>
+                    <select
+                      value={formData.fabricOrigin}
+                      onChange={e => setFormData({ ...formData, fabricOrigin: e.target.value })}
+                      className="w-full border-b-2 border-black/10 dark:border-white/10 py-2 focus:border-blue-600 outline-none transition-colors bg-white dark:bg-black font-bold uppercase text-xs"
+                    >
+                      <option value="">Seçiniz...</option>
+                      {ORIGIN_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+                    </select>
+                  </div>
                 </div>
               </div>
 

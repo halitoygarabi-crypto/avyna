@@ -1,4 +1,17 @@
 
+export interface ProductColor {
+  name: string;
+  hex: string;
+}
+
+export interface FabricProperties {
+  type: string;           // e.g. "Kadife", "Keten", "Deri", "Chenille"
+  composition: string;    // e.g. "80% Polyester, 20% Pamuk"
+  pillResistance: string; // e.g. "Yüksek", "Orta", "Düşük"
+  cleaningInstructions: string; // e.g. "Kuru Temizleme"
+  origin: string;         // e.g. "İtalya", "Türkiye"
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -14,6 +27,8 @@ export interface Product {
     depth: number;
   };
   features?: string[];
+  colors?: ProductColor[];
+  fabricProperties?: FabricProperties;
   stock: number;
 }
 

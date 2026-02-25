@@ -162,6 +162,66 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ product, onBack, onAddToC
                 </div>
               )}
 
+              {/* Color Options Display */}
+              {product.colors && product.colors.length > 0 && (
+                <div className="mb-6 md:mb-8 border-t border-black/5 pt-6 md:pt-8">
+                  <h3 className="text-[10px] md:text-xs font-black uppercase tracking-widest mb-4">Mevcut Renk Seçenekleri</h3>
+                  <div className="flex flex-wrap gap-4">
+                    {product.colors.map((color, i) => (
+                      <div key={i} className="flex flex-col items-center gap-2 group cursor-pointer">
+                        <div 
+                          className="size-8 md:size-10 rounded-full border border-black/5 shadow-sm p-0.5 transition-transform group-hover:scale-110"
+                          style={{ backgroundColor: color.hex }}
+                        />
+                        <span className="text-[7px] md:text-[8px] font-black uppercase tracking-widest text-gray-400 group-hover:text-black transition-colors">{color.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Fabric Properties Display */}
+              {product.fabricProperties && (
+                <div className="mb-6 md:mb-8 border-t border-black/5 pt-6 md:pt-8">
+                  <div className="flex items-center gap-2 mb-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-orange-600"><path d="M3 6c3-1 7-1 9 0s6 1 9 0"/><path d="M3 12c3-1 7-1 9 0s6 1 9 0"/><path d="M3 18c3-1 7-1 9 0s6 1 9 0"/><path d="M3 6v12"/><path d="M21 6v12"/></svg>
+                    <h3 className="text-[11px] md:text-xs font-black uppercase tracking-widest">Materyal & Bakım Detayları</h3>
+                  </div>
+                  <div className="grid grid-cols-2 gap-y-4 gap-x-6 bg-gray-50 dark:bg-surface-dark p-4 md:p-6 border border-black/5 dark:border-white/5">
+                    {product.fabricProperties.type && (
+                      <div>
+                        <p className="text-[7px] md:text-[8px] uppercase text-gray-400 font-bold tracking-[0.2em] mb-1">Kumaş Türü</p>
+                        <p className="text-[10px] md:text-xs font-black uppercase">{product.fabricProperties.type}</p>
+                      </div>
+                    )}
+                    {product.fabricProperties.composition && (
+                      <div>
+                        <p className="text-[7px] md:text-[8px] uppercase text-gray-400 font-bold tracking-[0.2em] mb-1">Kompozisyon</p>
+                        <p className="text-[10px] md:text-xs font-black uppercase">{product.fabricProperties.composition}</p>
+                      </div>
+                    )}
+                    {product.fabricProperties.pillResistance && (
+                      <div>
+                        <p className="text-[7px] md:text-[8px] uppercase text-gray-400 font-bold tracking-[0.2em] mb-1">Dayanıklılık</p>
+                        <p className="text-[10px] md:text-xs font-black uppercase">{product.fabricProperties.pillResistance} Seviye</p>
+                      </div>
+                    )}
+                    {product.fabricProperties.cleaningInstructions && (
+                      <div>
+                        <p className="text-[7px] md:text-[8px] uppercase text-gray-400 font-bold tracking-[0.2em] mb-1">Bakım</p>
+                        <p className="text-[10px] md:text-xs font-black uppercase">{product.fabricProperties.cleaningInstructions}</p>
+                      </div>
+                    )}
+                    {product.fabricProperties.origin && (
+                      <div className="col-span-2">
+                        <p className="text-[7px] md:text-[8px] uppercase text-gray-400 font-bold tracking-[0.2em] mb-1">Menşei</p>
+                        <p className="text-[10px] md:text-xs font-black uppercase text-orange-600">{product.fabricProperties.origin}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* Add to Cart Button */}
 
               <button
