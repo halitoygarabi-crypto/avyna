@@ -72,6 +72,7 @@ const Home: React.FC<HomeProps> = ({ products, onSelectProduct }) => {
                   <img
                     src={product.images[0]}
                     alt={product.name}
+                    loading="lazy"
                     className="absolute inset-0 w-full h-full object-cover grayscale-img"
                   />
 

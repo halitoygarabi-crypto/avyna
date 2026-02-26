@@ -157,6 +157,7 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ product, onBack, onAddToC
                 <img
                   src={activeImage}
                   alt={product.name}
+                  loading="lazy"
                   className="w-full h-full object-cover"
                 />
               )}
@@ -174,7 +175,7 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ product, onBack, onAddToC
                     onClick={() => setActiveImage(img)}
                     className={`aspect-square bg-gray-50 dark:bg-surface-dark border transition-colors p-1 cursor-pointer ${activeImage === img ? 'border-orange-600' : 'border-black/5 dark:border-white/5'}`}
                   >
-                    <img src={img} className="w-full h-full object-cover grayscale hover:grayscale-0 transition-all" alt={`${product.name} ${i + 1}`} />
+                    <img src={img} loading="lazy" className="w-full h-full object-cover grayscale hover:grayscale-0 transition-all" alt={`${product.name} ${i + 1}`} />
                   </div>
                 ));
               })()}

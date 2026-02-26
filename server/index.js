@@ -63,42 +63,86 @@ db.exec(`
 
 app.get('/api/products', async (req, res) => {
     try {
-        // Try to get from Supabase first (Source of Truth)
-        const { data: supabaseProducts, error: supabaseError } = await supabase
-            .from('products')
-            .select('*')
-            .order('name', { ascending: true });
+        console.log('[GET /api/products] Fetching products...');
+        
+        // Try to get from Supabase with a custom timeout (via AbortController or racer)
+        const fetchSupabase = async () => {
+            const { data, error } = await supabase
+                .from('products')
+                .select('*')
+                .order('name', { ascending: true });
+            if (error) throw error;
+            return data;
+        };
 
-        if (!supabaseError && supabaseProducts) {
-            const mapped = supabaseProducts.map(p => ({
+        // 3-second timeout for Supabase to prevent site-wide slowness
+        const supabaseTimeout = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Supabase request timed out')), 4000)
+        );
+
+        let supabaseData = null;
+        let fetchError = null;
+
+        try {
+            supabaseData = await Promise.race([fetchSupabase(), supabaseTimeout]);
+        } catch (err) {
+            fetchError = err;
+            console.error('[Supabase Error] Fetch failed or timed out:', err.message);
+        }
+
+        if (supabaseData) {
+            console.log(`[Supabase] Successfully fetched ${supabaseData.length} products.`);
+            const mapped = supabaseData.map(p => ({
                 ...p,
                 images: p.images || [],
                 modelUrl: p.modelurl,
                 videoUrl: p.videourl,
                 colors: p.colors || [],
-                fabricProperties: p.fabric_properties || undefined
+                fabricProperties: p.fabric_properties || undefined,
+                _source: 'supabase'
             }));
             return res.json(mapped);
         }
 
-        // Fallback to SQLite if Supabase fails
-        console.warn('Supabase fetch failed, falling back to local SQLite:', supabaseError);
+        // Fallback to SQLite
+        console.warn('[SQLite Fallback] Fetching from local database because:', fetchError?.message || 'Unknown error');
         const products = db.prepare('SELECT * FROM products ORDER BY name ASC').all();
         const parsedProducts = products.map(p => ({
             ...p,
             dimensions: p.dimensions ? JSON.parse(p.dimensions) : null,
-            images: p.imageUrl ? JSON.parse(p.imageUrl) : []
+            images: p.imageUrl ? JSON.parse(p.imageUrl) : [],
+            _source: 'sqlite',
+            _error: fetchError?.message
         }));
         res.json(parsedProducts);
     } catch (error) {
+        console.error('[Fatal Error] /api/products:', error);
         res.status(500).json({ error: error.message });
     }
 });
 
+app.get('/api/health', (req, res) => {
+    res.json({ 
+        status: 'ok', 
+        time: new Date().toISOString(),
+        env: {
+            supabaseUrl: !!supabaseUrl,
+            supabaseKey: !!supabaseKey
+        }
+    });
+});
+
 app.post('/api/products', async (req, res) => {
+    const bodySize = JSON.stringify(req.body).length;
+    console.log(`[POST /api/products] Received request. Body size: ${(bodySize / 1024).toFixed(2)} KB`);
+
     const { name, price, category, description, stock, images, modelUrl, dimensions, videoUrl, colors, fabricProperties } = req.body;
     
     try {
+        if (!name || isNaN(price)) {
+            return res.status(400).json({ error: 'Eksik bilgi: İsim ve fiyat zorunludur.' });
+        }
+
         // Generate a UUID for the product to satisfy Supabase's non-null constraint
         const productId = crypto.randomUUID();
 
@@ -118,6 +162,7 @@ app.post('/api/products', async (req, res) => {
             fabric_properties: fabricProperties || null
         };
 
+        console.log(`[Supabase] Inserting product: ${name} (${productId})`);
         const { data: supData, error: supError } = await supabase
             .from('products')
             .insert([dbProduct])
@@ -125,9 +170,15 @@ app.post('/api/products', async (req, res) => {
             .single();
 
         if (supError) {
-            console.error('Supabase Product Insert Error:', supError);
-            throw supError;
+            console.error('[Supabase Error] Insert failed:', supError);
+            return res.status(500).json({ 
+                error: `Supabase Hatası: ${supError.message}`, 
+                code: supError.code,
+                hint: supError.hint 
+            });
         }
+
+        console.log(`[Supabase] Insert success: ${name}`);
 
         // 2. Mirror to Local SQLite (Backup/Cache)
         try {
@@ -136,13 +187,14 @@ app.post('/api/products', async (req, res) => {
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             `);
             stmt.run(productId, name, price, category, description, stock, JSON.stringify(images), modelUrl, JSON.stringify(dimensions));
+            console.log(`[SQLite] Mirror success: ${name}`);
         } catch (sqliteErr) {
-            console.warn('SQLite mirror failed, but Supabase succeeded:', sqliteErr.message);
+            console.warn('[SQLite Warning] Mirror failed:', sqliteErr.message);
         }
 
         res.status(201).json({ success: true, ...supData });
     } catch (error) {
-        console.error('Add Product Route Error:', error);
+        console.error('[Route Error] Add Product:', error);
         res.status(500).json({ error: error.message });
     }
 });
@@ -167,10 +219,14 @@ app.delete('/api/products/:id', async (req, res) => {
 // UPDATE product
 app.put('/api/products/:id', async (req, res) => {
     const { id } = req.params;
+    const bodySize = JSON.stringify(req.body).length;
+    console.log(`[PUT /api/products/${id}] Received request. Body size: ${(bodySize / 1024).toFixed(2)} KB`);
+
     const { name, price, category, description, stock, images, modelUrl, dimensions, videoUrl, colors, fabricProperties } = req.body;
     
     try {
         const dbProduct = {
+            id, // Include ID for upsert to work correctly
             name,
             price,
             category,
@@ -184,21 +240,42 @@ app.put('/api/products/:id', async (req, res) => {
             fabric_properties: fabricProperties || null
         };
 
-        const { data: supData, error: supError } = await supabase
+        console.log(`[Supabase] Upserting product: ${name} (${id})`);
+        
+        // Use UPSERT instead of UPDATE + EQ to handle local-only SQLite products (IDs like "3")
+        // No .single() here to avoid coercion error if nothing happens
+        const { data: supDataArr, error: supError } = await supabase
             .from('products')
-            .update(dbProduct)
-            .eq('id', id)
-            .select()
-            .single();
+            .upsert(dbProduct)
+            .select();
 
         if (supError) {
-            console.error('Supabase Product Update Error:', supError);
-            throw supError;
+            console.error('[Supabase Error] Upsert failed:', supError);
+            return res.status(500).json({ 
+                error: `Supabase Hatası: ${supError.message}`, 
+                code: supError.code,
+                hint: supError.hint 
+            });
         }
 
-        res.json({ success: true, ...supData });
+        const supData = supDataArr && supDataArr.length > 0 ? supDataArr[0] : null;
+        console.log(`[Supabase] Upsert success: ${name}`, supData ? 'Row returned' : 'No row returned');
+        
+        // Also update SQLite mirror
+        try {
+            const stmt = db.prepare(`
+                UPDATE products 
+                SET name = ?, price = ?, category = ?, description = ?, stock = ?, imageUrl = ?, modelUrl = ?, dimensions = ?
+                WHERE id = ?
+            `);
+            stmt.run(name, price, category, description, stock, JSON.stringify(images), modelUrl, JSON.stringify(dimensions || {}), id);
+        } catch (sqliteErr) {
+            console.warn('[SQLite Warning] Mirror update failed:', sqliteErr.message);
+        }
+
+        res.json({ success: true, ...(supData || dbProduct) });
     } catch (error) {
-        console.error('Update Product Route Error:', error);
+        console.error('[Route Error] Update Product:', error);
         res.status(500).json({ error: error.message });
     }
 });

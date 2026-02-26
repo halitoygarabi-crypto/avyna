@@ -79,7 +79,7 @@ const Admin: React.FC<AdminProps> = ({ products, onAddProduct, onUpdateProduct, 
 
   const modelInputRef = React.useRef<HTMLInputElement>(null);
 
-  const compressImage = (base64Str: string, maxWidth = 600, maxHeight = 600): Promise<string> => {
+  const compressImage = (base64Str: string, maxWidth = 500, maxHeight = 500): Promise<string> => {
     return new Promise((resolve) => {
       const img = new Image();
       img.src = base64Str;
@@ -103,7 +103,8 @@ const Admin: React.FC<AdminProps> = ({ products, onAddProduct, onUpdateProduct, 
         canvas.height = height;
         const ctx = canvas.getContext('2d');
         ctx?.drawImage(img, 0, 0, width, height);
-        resolve(canvas.toDataURL('image/jpeg', 0.3)); // Even lower quality for payload safety
+        // Using WebP format as suggested by Gemini for better compression/quality ratio
+        resolve(canvas.toDataURL('image/webp', 0.2)); 
       };
       img.onerror = () => resolve(base64Str);
     });
@@ -226,9 +227,15 @@ const Admin: React.FC<AdminProps> = ({ products, onAddProduct, onUpdateProduct, 
       const errorCode = error.code || error.status || "";
       
       let hint = "Lütfen internet bağlantınızı ve verilerinizi kontrol edin.";
-      if (errorCode === '42501' || errorMessage.includes('permission')) hint = "Supabase RLS izinleri kapalı olabilir.";
-      if (errorCode === '413' || errorMessage.includes('large')) hint = "Görsel boyutları çok büyük. Lütfen daha küçük veya daha az görsel yükleyin.";
-      if (errorCode === '23505') hint = "Bu isimde bir ürün zaten mevcut olabilir.";
+      if (errorCode === '413' || errorMessage.includes('large') || errorMessage.includes('Entity Too Large')) {
+        hint = "Görsel boyutları çok büyük. Nginx veya Sunucu limiti aşılmış olabilir. Lütfen daha az veya daha küçük görsel yükleyin.";
+      } else if (errorCode === '42501' || errorMessage.includes('permission')) {
+        hint = "Supabase RLS izinleri kapalı veya yetki sorunu var.";
+      } else if (errorMessage.includes('timeout') || errorMessage.includes('abort')) {
+        hint = "Sunucu yanıt vermedi (Timeout). İnternet hızınız düşük olabilir veya sunucu meşgul.";
+      } else if (errorCode === '23505') {
+        hint = "Bu isimde bir ürün zaten mevcut olabilir.";
+      }
 
       alert(`❌ ÜRÜN KAYDEDİLEMEDİ!\n\nHata: ${errorMessage}\nKod: ${errorCode}\n\nİpucu: ${hint}`);
     } finally {
@@ -364,7 +371,18 @@ const Admin: React.FC<AdminProps> = ({ products, onAddProduct, onUpdateProduct, 
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12 gap-6">
         <div>
           <h1 className="text-4xl font-black uppercase tracking-tighter mb-2">Yönetim Paneli</h1>
-          <p className="text-gray-500 font-light text-sm uppercase tracking-[0.2em]">Koleksiyon & Envanter Kontrolü</p>
+          <div className="flex items-center gap-4">
+            <p className="text-gray-500 font-light text-sm uppercase tracking-[0.2em]">Koleksiyon & Envanter Kontrolü</p>
+            {products.length > 0 && (
+              <div className={`px-2 py-0.5 text-[8px] font-bold uppercase tracking-widest border ${
+                (products[0] as any)._source === 'supabase' 
+                  ? 'border-green-500 text-green-500' 
+                  : 'border-orange-500 text-orange-500 animate-pulse'
+              }`}>
+                {(products[0] as any)._source === 'supabase' ? 'Supabase Bağlı' : 'SQLite Fallback (Sync Gerekli)'}
+              </div>
+            )}
+          </div>
         </div>
         <div className="flex gap-4">
           <button
