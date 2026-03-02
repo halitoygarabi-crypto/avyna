@@ -1,0 +1,29 @@
+[dotenv@17.2.3] injecting env (15) from .env -- tip: ⚙️  enable debug logging with { debug: true }
+Inspecting products in Supabase...
+Found 26 products:
+ID: "1768153541346" | Name: Bhsura İkili Yataklı Koltuk – Şıklık, Konfor ve Fonksiyon Bir Arada
+ID: "1768124012903" | Name: Floki Tekli Koltuk Berjer | Dinlenme & Kitap Okuma Koltuğu | Baba Koltuğu | Tv Koltuğu
+ID: "1768151226010" | Name: gudrun yataklı mekanizmalı koltuk
+ID: "1768155311518" | Name: Bhsura İkili Yataklı Koltuk – Şıklık, Konfor ve Fonksiyon Bir Arada
+ID: "y1-bhusra" | Name: Bhsura İkili Yataklı Koltuk – Şıklık, Konfor ve Fonksiyon Bir Arada
+ID: "y1-storm" | Name: Storm İkili Yataklı Koltuk & Kanepe Konfor, Dayanıklılık ve Fonksiyonellik Bir Arada
+ID: "y1-denise" | Name: Denise berjer - Dinlenme koltuğu
+ID: "y1-lich" | Name: Lich Katlanabilir Laptop Sehpası & Raflı Çalışma Masası Metal Ayaklı | Çizim, Öğrenci ve Ofis Masası
+ID: "y1-napper" | Name: Napper Katlanabilir Şezlong Açık Alanlarda Konfor, Dayanıklılık ve Fonksiyonellik
+ID: "y1-harpy" | Name: Harpy Sallanır Sandalye – Konfor, Güç ve Ergonomi Tek Tasarımda
+ID: "1770745596050" | Name: Floki Tekli Koltuk Berjer | Dinlenme & Kitap Okuma Koltuğu | Baba Koltuğu | Tv Koltuğu
+ID: "y1-thor" | Name: Thor 360° Döner Tekli Koltuk & Berjer – Güçlü Tasarım, Üst Düzey Konfor
+ID: "1771954205973" | Name: Floki Exclusive Tekli Koltuk Berjer | Tv & Dinlenme Koltuğu | Yastıklı & Minderli - füme
+ID: "1771954237394" | Name: Floki Exclusive Tekli Koltuk Berjer | Tv & Dinlenme Koltuğu | Yastıklı & Minderli - füme
+ID: "1771954244625" | Name: Floki Exclusive Tekli Koltuk Berjer | Tv & Dinlenme Koltuğu | Yastıklı & Minderli - Krem
+ID: "1771954241185" | Name: Floki Exclusive Tekli Koltuk Berjer | Tv & Dinlenme Koltuğu | Yastıklı & Minderli - Lacivert
+ID: "1771954224981" | Name: Floki Exclusive Tekli Koltuk Berjer | Tv & Dinlenme Koltuğu | Yastıklı & Minderli - pembe
+ID: "1771961181242" | Name: pedra
+ID: "1771961526060" | Name: perda
+ID: "1771963570733" | Name: pedramim
+ID: "1771963790615" | Name: floki Exclusive Tekli Koltuk Berjer | Premium Tv & Dinlenme Koltuğu - fÜME
+ID: "1771964150201" | Name: pern
+ID: "f7f4babb-4a1b-48cd-930e-dd9979371c4f" | Name: pern
+ID: "ac888898-04c0-4761-8aea-950c37c8d2cf" | Name: per
+ID: "11d4963b-f285-451a-8085-5ffede0e7d0d" | Name: Floki Koltuk
+ID: "de1fe4e9-b03f-426b-822c-0fffd74a89e6" | Name: Floki Tekli Koltuk Berjer

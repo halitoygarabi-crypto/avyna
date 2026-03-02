@@ -79,7 +79,7 @@ const Admin: React.FC<AdminProps> = ({ products, onAddProduct, onUpdateProduct, 
 
   const modelInputRef = React.useRef<HTMLInputElement>(null);
 
-  const compressImage = (base64Str: string, maxWidth = 500, maxHeight = 500): Promise<string> => {
+  const compressImage = (base64Str: string, maxWidth = 1000, maxHeight = 1000): Promise<string> => {
     return new Promise((resolve) => {
       const img = new Image();
       img.src = base64Str;
@@ -103,8 +103,8 @@ const Admin: React.FC<AdminProps> = ({ products, onAddProduct, onUpdateProduct, 
         canvas.height = height;
         const ctx = canvas.getContext('2d');
         ctx?.drawImage(img, 0, 0, width, height);
-        // Using WebP format as suggested by Gemini for better compression/quality ratio
-        resolve(canvas.toDataURL('image/webp', 0.2)); 
+        // Using WebP format for better compression/quality ratio
+        resolve(canvas.toDataURL('image/webp', 0.6)); 
       };
       img.onerror = () => resolve(base64Str);
     });
