@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Product, ProductColor } from '../types';
+import { Product, ProductColor, ViewMode } from '../types';
 import { ChevronLeft, ShoppingBag, Share2, Ruler, Star, ShieldCheck, Truck, Link2, Check, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
 import { slugify } from '../utils/slug';
 
@@ -8,9 +8,10 @@ interface ProductDetailProps {
   product: Product;
   onBack: () => void;
   onAddToCart: (product: Product, color?: ProductColor) => void;
+  onNavigate: (view: ViewMode) => void;
 }
 
-const ProductDetail: React.FC<ProductDetailProps> = ({ product, onBack, onAddToCart }) => {
+const ProductDetail: React.FC<ProductDetailProps> = ({ product, onBack, onAddToCart, onNavigate }) => {
   const [added, setAdded] = React.useState(false);
   const [activeImage, setActiveImage] = React.useState(product.images?.[0] || '');
   const [selectedColor, setSelectedColor] = React.useState<ProductColor | null>(null);
@@ -199,10 +200,28 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ product, onBack, onAddToC
     }
   };
 
+  // Determine the effective color: if active image belongs to a color, use that color
+  const getEffectiveColor = (): ProductColor | undefined => {
+    if (selectedColor) return selectedColor;
+    // Check if the active image belongs to any color
+    if (product.colors && activeImage) {
+      for (const color of product.colors) {
+        if (color.images && color.images.includes(activeImage)) {
+          return color;
+        }
+      }
+    }
+    return undefined;
+  };
+
   const handleAddToCart = () => {
-    onAddToCart(product, selectedColor || undefined);
+    const effectiveColor = getEffectiveColor();
+    onAddToCart(product, effectiveColor);
     setAdded(true);
-    setTimeout(() => setAdded(false), 2000);
+    // Navigate to cart after brief visual feedback
+    setTimeout(() => {
+      onNavigate(ViewMode.CART);
+    }, 600);
   };
 
   const onThumbnailClick = (imgObj: { url: string, color: ProductColor | null }) => {
@@ -545,17 +564,28 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ product, onBack, onAddToC
                 </div>
               )}
 
-              {/* Add to Cart Button */}
+              {/* Active Color Indicator */}
+              {(() => {
+                const effectiveColor = selectedColor || (product.colors?.find(c => c.images?.includes(activeImage)));
+                return effectiveColor ? (
+                  <div className="flex items-center gap-2 mb-3 px-4 py-2.5 bg-orange-50 dark:bg-orange-900/10 border border-orange-200 dark:border-orange-800">
+                    <div className="size-4 rounded-full border-2 border-white shadow-md" style={{ backgroundColor: effectiveColor.hex }} />
+                    <span className="text-[9px] font-black uppercase tracking-widest text-orange-600">
+                      {effectiveColor.name} rengi ile sepete eklenecek
+                    </span>
+                  </div>
+                ) : null;
+              })()}
 
               <button
                 onClick={handleAddToCart}
                 className={`w-full py-4 md:py-5 text-sm md:text-base font-black uppercase tracking-[0.3em] transition-all flex items-center justify-center gap-3 mb-4 md:mb-6 ${added
-                  ? 'bg-green-600 text-white'
+                  ? 'bg-green-600 text-white scale-[0.98]'
                   : 'bg-black dark:bg-white text-white dark:text-black hover:bg-orange-600 dark:hover:bg-orange-600 dark:hover:text-white'
                   }`}
               >
                 <ShoppingBag size={18} className="md:w-5 md:h-5" />
-                {added ? 'Sepete Eklendi!' : 'Sepete Ekle'}
+                {added ? 'Sepete Gidiliyor...' : 'Sepete Ekle'}
               </button>
 
               {/* Features */}

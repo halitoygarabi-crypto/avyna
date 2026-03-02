@@ -289,6 +289,7 @@ const App: React.FC = () => {
             product={selectedProduct}
             onBack={() => setView(ViewMode.HOME)}
             onAddToCart={addToCart}
+            onNavigate={handleNavigate}
           />
         )}
 
