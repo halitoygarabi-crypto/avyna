@@ -199,8 +199,9 @@ export const SupabaseService = {
         const orderItems = items.map(item => ({
             order_id: orderData.id,
             product_id: item.product.id,
+            product_name: item.product.name,
             quantity: item.quantity,
-            price: item.product.price,
+            price: item.product.discountPrice || item.product.price,
             selected_color_name: item.selectedColor?.name || null,
             selected_color_hex: item.selectedColor?.hex || null
         }));
@@ -217,7 +218,18 @@ export const SupabaseService = {
     async getOrders() {
         const { data, error } = await supabase
             .from('orders')
-            .select('*')
+            .select(`
+                *,
+                order_items (
+                    id,
+                    product_id,
+                    product_name,
+                    quantity,
+                    price,
+                    selected_color_name,
+                    selected_color_hex
+                )
+            `)
             .order('created_at', { ascending: false });
 
         if (error) throw error;

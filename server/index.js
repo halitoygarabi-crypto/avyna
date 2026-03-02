@@ -63,58 +63,29 @@ db.exec(`
 
 app.get('/api/products', async (req, res) => {
     try {
-        console.log('[GET /api/products] Fetching products...');
+        console.log('[GET /api/products] Fetching products from Supabase...');
         
-        // Try to get from Supabase with a custom timeout (via AbortController or racer)
-        const fetchSupabase = async () => {
-            const { data, error } = await supabase
-                .from('products')
-                .select('*')
-                .order('name', { ascending: true });
-            if (error) throw error;
-            return data;
-        };
+        const { data, error } = await supabase
+            .from('products')
+            .select('*')
+            .order('name', { ascending: true });
 
-        // 3-second timeout for Supabase to prevent site-wide slowness
-        const supabaseTimeout = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Supabase request timed out')), 4000)
-        );
-
-        let supabaseData = null;
-        let fetchError = null;
-
-        try {
-            supabaseData = await Promise.race([fetchSupabase(), supabaseTimeout]);
-        } catch (err) {
-            fetchError = err;
-            console.error('[Supabase Error] Fetch failed or timed out:', err.message);
+        if (error) {
+            console.error('[Supabase Error] Fetch failed:', error.message);
+            return res.status(500).json({ error: 'Ürünler yüklenemedi: ' + error.message });
         }
 
-        if (supabaseData) {
-            console.log(`[Supabase] Successfully fetched ${supabaseData.length} products.`);
-            const mapped = supabaseData.map(p => ({
-                ...p,
-                images: p.images || [],
-                modelUrl: p.modelurl,
-                videoUrl: p.videourl,
-                colors: p.colors || [],
-                fabricProperties: p.fabric_properties || undefined,
-                _source: 'supabase'
-            }));
-            return res.json(mapped);
-        }
-
-        // Fallback to SQLite
-        console.warn('[SQLite Fallback] Fetching from local database because:', fetchError?.message || 'Unknown error');
-        const products = db.prepare('SELECT * FROM products ORDER BY name ASC').all();
-        const parsedProducts = products.map(p => ({
+        console.log(`[Supabase] Successfully fetched ${data.length} products.`);
+        const mapped = data.map(p => ({
             ...p,
-            dimensions: p.dimensions ? JSON.parse(p.dimensions) : null,
-            images: p.imageUrl ? JSON.parse(p.imageUrl) : [],
-            _source: 'sqlite',
-            _error: fetchError?.message
+            images: p.images || [],
+            modelUrl: p.modelurl,
+            videoUrl: p.videourl,
+            colors: p.colors || [],
+            fabricProperties: p.fabric_properties || undefined,
+            discountPrice: p.discount_price || undefined
         }));
-        res.json(parsedProducts);
+        res.json(mapped);
     } catch (error) {
         console.error('[Fatal Error] /api/products:', error);
         res.status(500).json({ error: error.message });

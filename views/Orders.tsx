@@ -166,11 +166,56 @@ const Orders: React.FC<OrdersProps> = ({ onNavigate }) => {
                                 </div>
 
                                 {expandedOrder === order.id && (
-                                    <div className="mt-6 pt-6 border-t border-black/5 dark:border-white/5 space-y-4">
+                                    <div className="mt-6 pt-6 border-t border-black/5 dark:border-white/5 space-y-6">
                                         <div>
                                             <p className="text-[10px] uppercase font-black text-gray-400 tracking-widest mb-2">Teslimat Adresi</p>
                                             <p className="text-sm font-light leading-relaxed">{order.address}</p>
                                         </div>
+
+                                        {/* Order Items with Color Info */}
+                                        {(order as any).order_items && (order as any).order_items.length > 0 && (
+                                            <div>
+                                                <p className="text-[10px] uppercase font-black text-gray-400 tracking-widest mb-3">Sipariş Kalemleri</p>
+                                                <div className="space-y-3">
+                                                    {(order as any).order_items.map((item: any) => (
+                                                        <div key={item.id} className="flex items-center gap-4 p-3 bg-gray-50 dark:bg-black/20 border border-black/5 dark:border-white/5">
+                                                            {/* Color Swatch */}
+                                                            {item.selected_color_hex ? (
+                                                                <div 
+                                                                    className="size-8 rounded-full border-2 border-white shadow-md shrink-0"
+                                                                    style={{ backgroundColor: item.selected_color_hex }}
+                                                                    title={item.selected_color_name}
+                                                                />
+                                                            ) : (
+                                                                <div className="size-8 rounded-full bg-gray-200 dark:bg-gray-700 border-2 border-white shadow-md shrink-0 flex items-center justify-center">
+                                                                    <span className="text-[7px] font-black text-gray-400">—</span>
+                                                                </div>
+                                                            )}
+                                                            
+                                                            <div className="flex-grow min-w-0">
+                                                                <p className="text-[10px] font-black uppercase tracking-widest truncate">
+                                                                    {item.product_name || `Ürün #${item.product_id.substring(0, 8)}`}
+                                                                </p>
+                                                                {item.selected_color_name ? (
+                                                                    <p className="text-[9px] font-bold uppercase tracking-widest text-orange-600 mt-0.5">
+                                                                        Renk: {item.selected_color_name}
+                                                                    </p>
+                                                                ) : (
+                                                                    <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mt-0.5">
+                                                                        Renk seçilmedi
+                                                                    </p>
+                                                                )}
+                                                            </div>
+
+                                                            <div className="text-right shrink-0">
+                                                                <p className="text-[10px] font-black uppercase tracking-widest text-gray-500">{item.quantity} Adet</p>
+                                                                <p className="text-sm font-black text-orange-600">₺{(item.price * item.quantity).toLocaleString()}</p>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
 
                                         <div>
                                             <p className="text-[10px] uppercase font-black text-gray-400 tracking-widest mb-3">Sipariş Durumu</p>
