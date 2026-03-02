@@ -187,8 +187,9 @@ const App: React.FC = () => {
     try {
       await ApiService.deleteProduct(id);
       setProducts(products.filter(p => p.id !== id));
-    } catch (e) {
+    } catch (e: any) {
       console.error("Error deleting product:", e);
+      alert("Ürün silinemedi: " + (e.message || "Bilinmeyen hata"));
     }
   };
 

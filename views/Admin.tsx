@@ -375,15 +375,6 @@ const Admin: React.FC<AdminProps> = ({ products, onAddProduct, onUpdateProduct, 
           <h1 className="text-4xl font-black uppercase tracking-tighter mb-2">Yönetim Paneli</h1>
           <div className="flex items-center gap-4">
             <p className="text-gray-500 font-light text-sm uppercase tracking-[0.2em]">Koleksiyon & Envanter Kontrolü</p>
-            {products.length > 0 && (
-              <div className={`px-2 py-0.5 text-[8px] font-bold uppercase tracking-widest border ${
-                (products[0] as any)._source === 'supabase' 
-                  ? 'border-green-500 text-green-500' 
-                  : 'border-orange-500 text-orange-500 animate-pulse'
-              }`}>
-                {(products[0] as any)._source === 'supabase' ? 'Supabase Bağlı' : 'SQLite Fallback (Sync Gerekli)'}
-              </div>
-            )}
           </div>
         </div>
         <div className="flex gap-4">

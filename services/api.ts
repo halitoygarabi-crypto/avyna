@@ -2,49 +2,22 @@
 import { SupabaseService } from './supabase';
 
 export const ApiService = {
-    // Products
+    // Products - Direct Supabase (single source of truth, no stale data)
     async getProducts() {
-        const backendUrl = import.meta.env.VITE_BACKEND_URL || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5000');
-        const response = await fetch(`${backendUrl}/api/products`);
-        if (!response.ok) throw new Error('Failed to fetch products');
-        return await response.json();
+        return await SupabaseService.getProducts();
     },
 
     async addProduct(product: any) {
-        const backendUrl = import.meta.env.VITE_BACKEND_URL || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5000');
-        const response = await fetch(`${backendUrl}/api/products`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(product)
-        });
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.error || 'Failed to add product');
-        }
-        return await response.json();
+        return await SupabaseService.addProduct(product);
     },
 
     async deleteProduct(id: string) {
-        const backendUrl = import.meta.env.VITE_BACKEND_URL || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5000');
-        const response = await fetch(`${backendUrl}/api/products/${id}`, {
-            method: 'DELETE'
-        });
-        if (!response.ok) throw new Error('Failed to delete product');
-        return { success: true };
+        // Delete directly via Supabase (more reliable than backend proxy)
+        return await SupabaseService.deleteProduct(id);
     },
 
     async updateProduct(product: any) {
-        const backendUrl = import.meta.env.VITE_BACKEND_URL || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5000');
-        const response = await fetch(`${backendUrl}/api/products/${product.id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(product)
-        });
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.error || 'Failed to update product');
-        }
-        return await response.json();
+        return await SupabaseService.updateProduct(product);
     },
 
     // Orders
