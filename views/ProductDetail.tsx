@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Product, ProductColor, ViewMode } from '../types';
-import { ChevronLeft, ShoppingBag, Share2, Ruler, Star, ShieldCheck, Truck, Link2, Check, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
+import { ChevronLeft, ShoppingBag, Share2, Ruler, Star, ShieldCheck, Truck, Link2, Check, ZoomIn, ZoomOut, Maximize2, Heart } from 'lucide-react';
 import { slugify } from '../utils/slug';
 
 interface ProductDetailProps {
@@ -9,9 +9,11 @@ interface ProductDetailProps {
   onBack: () => void;
   onAddToCart: (product: Product, color?: ProductColor) => void;
   onNavigate: (view: ViewMode) => void;
+  isFavorite?: boolean;
+  onToggleFavorite?: (productId: string) => void;
 }
 
-const ProductDetail: React.FC<ProductDetailProps> = ({ product, onBack, onAddToCart, onNavigate }) => {
+const ProductDetail: React.FC<ProductDetailProps> = ({ product, onBack, onAddToCart, onNavigate, isFavorite = false, onToggleFavorite }) => {
   const [added, setAdded] = React.useState(false);
   const [activeImage, setActiveImage] = React.useState(product.images?.[0] || '');
   const [selectedColor, setSelectedColor] = React.useState<ProductColor | null>(null);
@@ -244,6 +246,13 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ product, onBack, onAddToC
         </button>
         <span className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.3em] md:tracking-[0.4em] text-gray-400">Ürün Tanımı / {product.name}</span>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => onToggleFavorite?.(product.id)}
+            className={`size-10 md:size-12 flex items-center justify-center border transition-all ${isFavorite ? 'border-orange-600 bg-orange-600/5' : 'border-black/5 dark:border-white/5 hover:border-orange-600'}`}
+            title={isFavorite ? 'Favorilerden Kaldır' : 'Favorilere Ekle'}
+          >
+            <Heart size={18} className={`md:w-5 md:h-5 transition-all ${isFavorite ? 'fill-orange-600 text-orange-600' : ''}`} />
+          </button>
           <button
             onClick={handleShare}
             className={`size-10 md:size-12 flex items-center justify-center border transition-all ${

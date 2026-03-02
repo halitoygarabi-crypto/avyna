@@ -51,6 +51,7 @@ export enum ViewMode {
   CHECKOUT = 'checkout',
   TRIAL_ROOM = 'trial_room',
   ORDERS = 'orders',
+  FAVORITES = 'favorites',
   PAYMENT_SUCCESS = 'payment_success',
   PAYMENT_FAIL = 'payment_fail',
   INFO_DELIVERY = 'info_delivery',

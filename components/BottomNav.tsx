@@ -30,10 +30,10 @@ const BottomNav: React.FC<BottomNavProps> = ({ activeView, onNavigate, cartCount
         </button>
 
         <button
-          onClick={() => onNavigate(ViewMode.HOME)}
-          className="flex flex-col items-center justify-center w-full h-full text-gray-400 space-y-1"
+          onClick={() => onNavigate(ViewMode.FAVORITES)}
+          className={`flex flex-col items-center justify-center w-full h-full space-y-1 transition-all ${activeView === ViewMode.FAVORITES ? 'text-orange-600' : 'text-gray-400'}`}
         >
-          <Heart size={22} />
+          <Heart size={22} strokeWidth={activeView === ViewMode.FAVORITES ? 3 : 2} className={activeView === ViewMode.FAVORITES ? 'fill-orange-600' : ''} />
           <span className="text-[9px] font-black uppercase tracking-[0.2em]">Favori</span>
         </button>
 

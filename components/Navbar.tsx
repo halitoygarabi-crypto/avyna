@@ -7,15 +7,16 @@ interface NavbarProps {
   onNavigate: (view: ViewMode) => void;
   activeView: ViewMode;
   cartCount: number;
+  favoritesCount?: number;
 }
 
-const Navbar: React.FC<NavbarProps> = ({ onNavigate, activeView, cartCount }) => {
+const Navbar: React.FC<NavbarProps> = ({ onNavigate, activeView, cartCount, favoritesCount = 0 }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const navItems = [
     { label: 'Anasayfa', view: ViewMode.HOME, icon: <Home size={18} /> },
     { label: 'Yapay Zeka Deneme', view: ViewMode.TRIAL_ROOM, icon: <LayoutGrid size={18} /> },
-    { label: 'Favorilerim', view: ViewMode.HOME, icon: <Heart size={18} /> },
+    { label: 'Favorilerim', view: ViewMode.FAVORITES, icon: <Heart size={18} />, count: favoritesCount },
     { label: 'Yönetim Paneli', view: ViewMode.ADMIN, icon: <User size={18} /> },
     { label: 'Sepetim', view: ViewMode.CART, icon: <ShoppingBag size={18} />, count: cartCount },
   ];
@@ -52,11 +53,16 @@ const Navbar: React.FC<NavbarProps> = ({ onNavigate, activeView, cartCount }) =>
           </button>
           
           <button
-            onClick={() => handleNavigate(ViewMode.HOME)}
-            className="hidden sm:flex size-9 md:size-10 shrink-0 items-center justify-center text-black dark:text-white hover:text-orange-600 transition-all cursor-pointer"
+            onClick={() => handleNavigate(ViewMode.FAVORITES)}
+            className={`hidden sm:flex size-9 md:size-10 shrink-0 items-center justify-center transition-all cursor-pointer relative ${activeView === ViewMode.FAVORITES ? 'text-orange-600' : 'text-black dark:text-white hover:text-orange-600'}`}
             title="Favorilerim"
           >
-            <Heart size={18} className="md:w-[20px] md:h-[20px]" strokeWidth={2.5} />
+            <Heart size={18} className={`md:w-[20px] md:h-[20px] ${activeView === ViewMode.FAVORITES ? 'fill-orange-600' : ''}`} strokeWidth={2.5} />
+            {favoritesCount > 0 && (
+              <span className="absolute -top-1 -right-1 h-4 w-4 md:h-5 md:w-5 bg-orange-600 text-white text-[8px] md:text-[10px] font-black rounded-full flex items-center justify-center border-2 border-white dark:border-black">
+                {favoritesCount}
+              </span>
+            )}
           </button>
 
           <button

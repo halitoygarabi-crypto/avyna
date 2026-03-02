@@ -12,6 +12,7 @@ import Checkout from './views/Checkout';
 import TrialRoom from './views/TrialRoom';
 import Orders from './views/Orders';
 import InfoPages from './views/InfoPages';
+import Favorites from './views/Favorites';
 import { Product, ViewMode, CartItem, ProductColor } from './types';
 import { INITIAL_PRODUCTS } from './services/mockData';
 import { ApiService } from './services/api';
@@ -26,6 +27,20 @@ const App: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [paymentCode, setPaymentCode] = useState<string | null>(null);
+  const [favoriteIds, setFavoriteIds] = useState<string[]>(() => {
+    const saved = localStorage.getItem('avyna_favorites');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const toggleFavorite = (productId: string) => {
+    setFavoriteIds(prev => {
+      const updated = prev.includes(productId)
+        ? prev.filter(id => id !== productId)
+        : [...prev, productId];
+      localStorage.setItem('avyna_favorites', JSON.stringify(updated));
+      return updated;
+    });
+  };
 
   // URL → ViewMode mapping
   const viewModeFromPath = (path: string): ViewMode | null => {
@@ -43,6 +58,7 @@ const App: React.FC = () => {
     if (path === '/iletisim') return ViewMode.CONTACT;
     if (path === '/gizlilik') return ViewMode.INFO_PRIVACY;
     if (path === '/mesafeli-satis') return ViewMode.INFO_DISTANCE_SALES;
+    if (path === '/favorilerim') return ViewMode.FAVORITES;
     if (path.startsWith('/urun/')) return ViewMode.DETAIL;
     return null;
   };
@@ -57,6 +73,7 @@ const App: React.FC = () => {
       case ViewMode.CHECKOUT: return '/odeme';
       case ViewMode.TRIAL_ROOM: return '/deneme-odasi';
       case ViewMode.ORDERS: return '/siparisler';
+      case ViewMode.FAVORITES: return '/favorilerim';
       case ViewMode.PAYMENT_SUCCESS: return '/payment-success';
       case ViewMode.PAYMENT_FAIL: return '/payment-fail';
       case ViewMode.INFO_DELIVERY: return '/teslimat';
@@ -263,11 +280,12 @@ const App: React.FC = () => {
         activeView={view}
         onNavigate={handleNavigate}
         cartCount={cart.reduce((sum, item) => sum + item.quantity, 0)}
+        favoritesCount={favoriteIds.length}
       />
 
       <main className="flex-grow pb-24">
         {view === ViewMode.HOME && (
-          <Home products={products} onSelectProduct={navigateToDetail} />
+          <Home products={products} onSelectProduct={navigateToDetail} favoriteIds={favoriteIds} onToggleFavorite={toggleFavorite} />
         )}
 
         {view === ViewMode.ADMIN && (
@@ -290,6 +308,8 @@ const App: React.FC = () => {
             onBack={() => setView(ViewMode.HOME)}
             onAddToCart={addToCart}
             onNavigate={handleNavigate}
+            isFavorite={favoriteIds.includes(selectedProduct.id)}
+            onToggleFavorite={toggleFavorite}
           />
         )}
 
@@ -300,6 +320,16 @@ const App: React.FC = () => {
             onRemoveItem={removeItem}
             onNavigate={handleNavigate}
             onBack={() => setView(ViewMode.HOME)}
+          />
+        )}
+
+        {view === ViewMode.FAVORITES && (
+          <Favorites
+            products={products}
+            favoriteIds={favoriteIds}
+            onToggleFavorite={toggleFavorite}
+            onSelectProduct={navigateToDetail}
+            onNavigate={handleNavigate}
           />
         )}
 

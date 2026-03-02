@@ -6,9 +6,11 @@ import { Plus, Heart } from 'lucide-react';
 interface HomeProps {
   products: Product[];
   onSelectProduct: (product: Product) => void;
+  favoriteIds?: string[];
+  onToggleFavorite?: (productId: string) => void;
 }
 
-const Home: React.FC<HomeProps> = ({ products, onSelectProduct }) => {
+const Home: React.FC<HomeProps> = ({ products, onSelectProduct, favoriteIds = [], onToggleFavorite }) => {
   const [selectedCategory, setSelectedCategory] = React.useState('HEPSİ');
   const categories = ['HEPSİ', 'OTURMA GRUBU', 'YEMEK ODASI', 'AKSESUAR', 'AYDINLATMA'];
 
@@ -77,9 +79,12 @@ const Home: React.FC<HomeProps> = ({ products, onSelectProduct }) => {
                   />
 
                   {/* Overlay elements */}
-                  <div className="absolute top-3 right-3 md:top-4 md:right-4 p-1.5 md:p-2 bg-black/10 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Heart className="text-white" size={16} />
-                  </div>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onToggleFavorite?.(product.id); }}
+                    className={`absolute top-3 right-3 md:top-4 md:right-4 p-1.5 md:p-2 backdrop-blur-sm transition-all z-10 ${favoriteIds.includes(product.id) ? 'bg-orange-600/20 opacity-100' : 'bg-black/10 opacity-0 group-hover:opacity-100'}`}
+                  >
+                    <Heart className={`${favoriteIds.includes(product.id) ? 'text-orange-600 fill-orange-600' : 'text-white'}`} size={16} />
+                  </button>
                   <div className="absolute bottom-3 left-3 md:bottom-4 md:left-4 bg-orange-600 px-3 py-1.5 md:px-4 md:py-2 opacity-0 -translate-x-4 group-hover:opacity-100 group-hover:translate-x-0 transition-all">
                     <span className="text-[9px] md:text-[10px] font-black text-white tracking-[0.2em]">KEŞFİT</span>
                   </div>
