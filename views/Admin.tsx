@@ -24,7 +24,6 @@ const Admin: React.FC<AdminProps> = ({ products, onAddProduct, onUpdateProduct, 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGenerating3D, setIsGenerating3D] = useState(false);
   const [show3DPanel, setShow3DPanel] = useState(false);
-  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [n8nImageUrl, setN8nImageUrl] = useState('');
   const [generatedModelUrl, setGeneratedModelUrl] = useState<string | null>(null);
   const [generationError, setGenerationError] = useState<string | null>(null);
@@ -70,7 +69,8 @@ const Admin: React.FC<AdminProps> = ({ products, onAddProduct, onUpdateProduct, 
     fabricOrigin: '',
     dimWidth: '',
     dimHeight: '',
-    dimDepth: ''
+    dimDepth: '',
+    discountPrice: ''
   });
 
   const [customColorName, setCustomColorName] = useState('');
@@ -122,46 +122,48 @@ const Admin: React.FC<AdminProps> = ({ products, onAddProduct, onUpdateProduct, 
         });
         const compressed = await compressImage(base64);
 
-        if (activeColorTab) {
-          // Renk bazlı görsel ekleme
-          setFormData(prev => ({
-            ...prev,
-            colors: prev.colors.map(c =>
-              c.name === activeColorTab
-                ? { ...c, images: [...(c.images || []), compressed] }
-                : c
-            )
-          }));
-        } else {
-          // Genel görsel ekleme
-          setImagePreviews(prev => [...prev, compressed]);
-          setFormData(prev => ({ ...prev, images: [...prev.images, compressed] }));
-        }
+        // Always add to general images by default, user can then assign color
+        setFormData(prev => ({
+          ...prev,
+          images: [...prev.images, compressed]
+        }));
       }
     }
   };
 
-  const removeImage = (index: number, colorName?: string) => {
-    if (colorName) {
-      // Renk bazlı görsel silme
-      setFormData(prev => ({
-        ...prev,
-        colors: prev.colors.map(c =>
-          c.name === colorName
-            ? { ...c, images: (c.images || []).filter((_, i) => i !== index) }
-            : c
-        )
+  const assignColorToImage = (imageSrc: string, colorName: string | null) => {
+    setFormData(prev => {
+      // 1. Remove from wherever it currently is
+      let newImages = prev.images.filter(img => img !== imageSrc);
+      let newColors = prev.colors.map(c => ({
+        ...c,
+        images: (c.images || []).filter(img => img !== imageSrc)
       }));
-    } else {
-      // Genel görsel silme
-      const updatedPreviews = [...imagePreviews];
-      updatedPreviews.splice(index, 1);
-      setImagePreviews(updatedPreviews);
 
-      const updatedImages = [...formData.images];
-      updatedImages.splice(index, 1);
-      setFormData(prev => ({ ...prev, images: updatedImages }));
-    }
+      // 2. Add to new location
+      if (colorName === null) {
+        newImages.push(imageSrc);
+      } else {
+        newColors = newColors.map(c =>
+          c.name === colorName
+            ? { ...c, images: [...(c.images || []), imageSrc] }
+            : c
+        );
+      }
+
+      return { ...prev, images: newImages, colors: newColors };
+    });
+  };
+
+  const removeAnyImage = (imageSrc: string) => {
+    setFormData(prev => ({
+      ...prev,
+      images: prev.images.filter(img => img !== imageSrc),
+      colors: prev.colors.map(c => ({
+        ...c,
+        images: (c.images || []).filter(img => img !== imageSrc)
+      }))
+    }));
   };
 
   const handleModelSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -202,23 +204,23 @@ const Admin: React.FC<AdminProps> = ({ products, onAddProduct, onUpdateProduct, 
         category: formData.category,
         description: formData.description,
         stock: Number(formData.stock),
-        images: formData.images.length > 0 ? formData.images : ['https://picsum.photos/seed/' + formData.name + '/800/600'],
-        modelUrl: formData.modelUrl || 'https://modelviewer.dev/shared-assets/models/Astronaut.glb',
+        images: formData.images,
+        modelUrl: formData.modelUrl || undefined,
         videoUrl: formData.videoUrl || undefined,
-        colors: formData.colors.length > 0 ? formData.colors : undefined,
+        colors: formData.colors,
         fabricProperties: fabricProps,
         dimensions: {
           width: Number(formData.dimWidth) || 100,
           height: Number(formData.dimHeight) || 80,
           depth: Number(formData.dimDepth) || 90
-        }
+        },
+        discountPrice: formData.discountPrice ? Number(formData.discountPrice) : undefined
       };
 
       console.log("Submitting new product...", newProduct.name);
       await onAddProduct(newProduct as Product);
 
-      setFormData({ name: '', price: '', category: 'Oturma Grubu', description: '', stock: '5', images: [], modelUrl: '', videoUrl: '', colors: [], fabricType: '', fabricComposition: '', fabricWarranty: '', fabricCleaning: '', fabricOrigin: '', dimWidth: '', dimHeight: '', dimDepth: '' });
-      setImagePreviews([]);
+      setFormData({ name: '', price: '', category: 'Oturma Grubu', description: '', stock: '5', images: [], modelUrl: '', videoUrl: '', colors: [], fabricType: '', fabricComposition: '', fabricWarranty: '', fabricCleaning: '', fabricOrigin: '', dimWidth: '', dimHeight: '', dimDepth: '', discountPrice: '' });
       setIsAdding(false);
       alert("✅ ÜRÜN BAŞARIYLA KAYDEDİLDİ!");
     } catch (error: any) {
@@ -262,9 +264,9 @@ const Admin: React.FC<AdminProps> = ({ products, onAddProduct, onUpdateProduct, 
       fabricOrigin: product.fabricProperties?.origin || '',
       dimWidth: product.dimensions?.width?.toString() || '',
       dimHeight: product.dimensions?.height?.toString() || '',
-      dimDepth: product.dimensions?.depth?.toString() || ''
+      dimDepth: product.dimensions?.depth?.toString() || '',
+      discountPrice: product.discountPrice?.toString() || ''
     });
-    setImagePreviews(product.images || []);
     setIsEditing(true);
     setIsAdding(false);
     setShow3DPanel(false);
@@ -291,22 +293,22 @@ const Admin: React.FC<AdminProps> = ({ products, onAddProduct, onUpdateProduct, 
         category: formData.category,
         description: formData.description,
         stock: Number(formData.stock),
-        images: formData.images.length > 0 ? formData.images : editingProduct.images,
-        modelUrl: formData.modelUrl || editingProduct.modelUrl,
+        images: formData.images,
+        modelUrl: formData.modelUrl || undefined,
         videoUrl: formData.videoUrl || undefined,
-        colors: formData.colors.length > 0 ? formData.colors : undefined,
+        colors: formData.colors,
         fabricProperties: fabricProps,
         dimensions: {
           width: Number(formData.dimWidth) || editingProduct.dimensions?.width || 100,
           height: Number(formData.dimHeight) || editingProduct.dimensions?.height || 80,
           depth: Number(formData.dimDepth) || editingProduct.dimensions?.depth || 90
-        }
+        },
+        discountPrice: formData.discountPrice ? Number(formData.discountPrice) : undefined
       };
 
       await onUpdateProduct(updatedProduct);
 
-      setFormData({ name: '', price: '', category: 'Oturma Grubu', description: '', stock: '5', images: [], modelUrl: '', videoUrl: '', colors: [], fabricType: '', fabricComposition: '', fabricWarranty: '', fabricCleaning: '', fabricOrigin: '', dimWidth: '', dimHeight: '', dimDepth: '' });
-      setImagePreviews([]);
+      setFormData({ name: '', price: '', category: 'Oturma Grubu', description: '', stock: '5', images: [], modelUrl: '', videoUrl: '', colors: [], fabricType: '', fabricComposition: '', fabricWarranty: '', fabricCleaning: '', fabricOrigin: '', dimWidth: '', dimHeight: '', dimDepth: '', discountPrice: '' });
       setIsEditing(false);
       setEditingProduct(null);
     } catch (error: any) {
@@ -512,7 +514,11 @@ const Admin: React.FC<AdminProps> = ({ products, onAddProduct, onUpdateProduct, 
                           images: [n8nImageUrl],
                           modelUrl: generatedModelUrl
                         }));
-                        setImagePreviews([n8nImageUrl]);
+                        setFormData(prev => ({
+                          ...prev,
+                          images: [n8nImageUrl],
+                          modelUrl: generatedModelUrl
+                        }));
                         setIsAdding(true);
                         setShow3DPanel(false);
                       }}
@@ -536,23 +542,39 @@ const Admin: React.FC<AdminProps> = ({ products, onAddProduct, onUpdateProduct, 
       )}
 
       {isAdding && (
-        <div className="bg-white dark:bg-surface-dark p-8 mb-12 border-l-8 border-orange-600 shadow-2xl animate-in fade-in slide-in-from-top-4">
-          <h2 className="text-xl font-black mb-8 uppercase tracking-widest border-b border-black/5 dark:border-white/5 pb-4">Ürün Kaydı</h2>
-          <form onSubmit={handleSubmit} className="space-y-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className="space-y-2">
-                <label className="block text-[10px] uppercase font-black text-gray-400 tracking-widest">Ürün İsmi</label>
+        <div className="bg-white dark:bg-surface-dark p-8 mb-12 border-l-8 border-orange-600 shadow-2xl animate-[fadeIn_0.5s_ease-out]">
+          <h2 className="text-2xl font-black mb-8 uppercase tracking-widest border-b border-black/5 dark:border-white/5 pb-4 italic">Yeni Ürün Ekle</h2>
+          <form onSubmit={handleSubmit} className="space-y-10">
+            {/* Essential Info Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              <div className="space-y-2 col-span-1 md:col-span-2">
+                <label className="block text-[10px] uppercase font-black text-gray-400 tracking-[0.2em]">Ürün İsmi</label>
                 <input
                   type="text"
                   required
                   value={formData.name}
                   onChange={e => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full border-b-2 border-black/10 dark:border-white/10 bg-transparent py-3 focus:border-orange-600 outline-none transition-colors font-bold uppercase tracking-tight text-lg"
-                  placeholder="örn: LUNA LOUNGE"
+                  className="w-full border-b-2 border-black/10 dark:border-white/10 bg-transparent py-3 focus:border-orange-600 outline-none transition-colors font-bold uppercase tracking-tight text-xl"
+                  placeholder="ORN: LUNA LOUNGE CHAIR"
                 />
               </div>
               <div className="space-y-2">
-                <label className="block text-[10px] uppercase font-black text-gray-400 tracking-widest">Fiyat (₺)</label>
+                <label className="block text-[10px] uppercase font-black text-gray-400 tracking-[0.2em]">Kategori</label>
+                <select
+                  value={formData.category}
+                  onChange={e => setFormData({ ...formData, category: e.target.value })}
+                  className="w-full border-b-2 border-black/10 dark:border-white/10 py-3 focus:border-orange-600 outline-none transition-colors bg-white dark:bg-black font-bold uppercase text-sm"
+                >
+                  <option>Oturma Grubu</option>
+                  <option>Yemek Odası</option>
+                  <option>Yatak Odası</option>
+                  <option>Aksesuar</option>
+                  <option>Aydınlatma</option>
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-[10px] uppercase font-black text-gray-400 tracking-[0.2em]">Fiyat (₺)</label>
                 <input
                   type="number"
                   required
@@ -561,456 +583,277 @@ const Admin: React.FC<AdminProps> = ({ products, onAddProduct, onUpdateProduct, 
                   className="w-full border-b-2 border-black/10 dark:border-white/10 bg-transparent py-3 focus:border-orange-600 outline-none transition-colors font-bold text-lg"
                 />
               </div>
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <label className="block text-[10px] uppercase font-black text-gray-400 tracking-widest">Kategori</label>
-                  <select
-                    value={formData.category}
-                    onChange={e => setFormData({ ...formData, category: e.target.value })}
-                    className="w-full border-b-2 border-black/10 dark:border-white/10 py-3 focus:border-orange-600 outline-none transition-colors bg-white dark:bg-black font-bold uppercase text-sm"
-                  >
-                    <option>Oturma Grubu</option>
-                    <option>Yemek Odası</option>
-                    <option>Yatak Odası</option>
-                    <option>Aksesuar</option>
-                    <option>Aydınlatma</option>
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <label className="block text-[10px] uppercase font-black text-gray-400 tracking-widest">Stok Miktarı</label>
-                  <input
-                    type="number"
-                    value={formData.stock}
-                    onChange={e => setFormData({ ...formData, stock: e.target.value })}
-                    className="w-full border-b-2 border-black/10 dark:border-white/10 bg-transparent py-3 focus:border-orange-600 outline-none transition-colors font-bold text-sm"
-                  />
-                </div>
+              <div className="space-y-2">
+                <label className="block text-[10px] uppercase font-black text-orange-600 tracking-[0.2em]">İNDİRİMLİ FİYAT (₺)</label>
+                <input
+                  type="number"
+                  value={formData.discountPrice}
+                  onChange={e => setFormData({ ...formData, discountPrice: e.target.value })}
+                  className="w-full border-b-2 border-orange-600/20 bg-orange-50/5 dark:bg-orange-950/5 py-3 focus:border-red-600 outline-none transition-colors font-bold text-lg text-orange-600"
+                  placeholder="KAMPANYA VARSA GİRİN"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="block text-[10px] uppercase font-black text-gray-400 tracking-[0.2em]">Stok Miktarı</label>
+                <input
+                  type="number"
+                  value={formData.stock}
+                  onChange={e => setFormData({ ...formData, stock: e.target.value })}
+                  className="w-full border-b-2 border-black/10 dark:border-white/10 bg-transparent py-3 focus:border-orange-600 outline-none transition-colors font-bold text-sm"
+                />
+              </div>
+            </div>
+
+            {/* Colors and Images Combined - UX IMPROVEMENT */}
+            <div className="space-y-6 bg-gray-50/50 dark:bg-white/5 p-8 border border-black/5 dark:border-white/5">
+              <div className="flex items-center gap-3 border-b border-black/5 pb-4">
+                <Palette className="text-orange-600" size={18} />
+                <h3 className="text-[12px] font-black uppercase tracking-[0.3em]">Renk Seçenekleri & Görseller</h3>
               </div>
 
-              {/* ═══ RENK SEÇENEKLERİ ═══ */}
-              <div className="space-y-4 md:col-span-2">
-                <div className="flex items-center gap-2 border-b border-black/5 dark:border-white/5 pb-3">
-                  <Palette size={16} className="text-orange-600" />
-                  <label className="block text-[10px] uppercase font-black text-gray-400 tracking-widest">Renk Seçenekleri</label>
-                </div>
-                
-                {/* Selected Colors */}
-                {formData.colors.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mb-3">
-                    {formData.colors.map((color, idx) => (
-                      <div key={idx} className="flex items-center gap-2 bg-gray-50 dark:bg-surface-dark border border-black/5 dark:border-white/5 px-3 py-2 group hover:border-red-300 transition-colors">
-                        <div className="w-5 h-5 rounded-full border-2 border-white shadow-md" style={{ backgroundColor: color.hex }} />
-                        <span className="text-[10px] font-bold uppercase tracking-wider">{color.name}</span>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {/* 1. Add/Select Colors */}
+                <div className="space-y-4">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">1. Renkleri Belirleyin</p>
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {PRESET_COLORS.map(color => {
+                      const isSelected = formData.colors.some(c => c.hex === color.hex);
+                      return (
                         <button
+                          key={color.hex}
                           type="button"
-                          onClick={() => setFormData(prev => ({ ...prev, colors: prev.colors.filter((_, i) => i !== idx) }))}
-                          className="text-gray-300 hover:text-red-600 transition-colors ml-1"
+                          onClick={() => {
+                            if (isSelected) {
+                              setFormData(prev => ({ ...prev, colors: prev.colors.filter(c => c.hex !== color.hex) }));
+                            } else {
+                              setFormData(prev => ({ ...prev, colors: [...prev.colors, { ...color, images: [] }] }));
+                            }
+                          }}
+                          className={`flex items-center gap-2 px-3 py-2 border-2 transition-all text-[9px] font-bold uppercase ${isSelected ? 'border-orange-600 bg-orange-50 dark:bg-orange-900/10' : 'border-black/5 dark:border-white/5 hover:border-black/20'}`}
                         >
-                          <X size={12} />
+                          <div className="size-3 rounded-full shadow-sm" style={{ backgroundColor: color.hex }} />
+                          {color.name}
                         </button>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
-                )}
-
-                {/* Preset Colors Grid */}
-                <div className="flex flex-wrap gap-2">
-                  {PRESET_COLORS.map((color) => {
-                    const isSelected = formData.colors.some(c => c.hex === color.hex);
-                    return (
-                      <button
-                        key={color.hex}
-                        type="button"
-                        onClick={() => {
-                          if (isSelected) {
-                            setFormData(prev => ({ ...prev, colors: prev.colors.filter(c => c.hex !== color.hex) }));
-                          } else {
-                            setFormData(prev => ({ ...prev, colors: [...prev.colors, color] }));
-                          }
-                        }}
-                        className={`flex items-center gap-2 px-3 py-2 border-2 transition-all text-[9px] font-bold uppercase tracking-wider ${isSelected ? 'border-orange-600 bg-orange-50 dark:bg-orange-900/10' : 'border-black/5 dark:border-white/5 hover:border-black/20'}`}
-                        title={color.name}
-                      >
-                        <div className="w-4 h-4 rounded-full border border-black/10 shadow-sm" style={{ backgroundColor: color.hex }} />
-                        {color.name}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* Custom Color Input */}
-                <div className="flex items-end gap-3 mt-3">
-                  <div className="flex-1 space-y-1">
-                    <label className="block text-[8px] uppercase font-bold text-gray-400 tracking-widest">Özel Renk Adı</label>
+                  <div className="flex gap-2">
                     <input
                       type="text"
                       value={customColorName}
                       onChange={e => setCustomColorName(e.target.value)}
-                      className="w-full border-b border-black/10 dark:border-white/10 bg-transparent py-2 focus:border-orange-600 outline-none transition-colors font-bold text-xs uppercase tracking-wider"
-                      placeholder="örn: Petrol Mavisi"
+                      className="flex-1 border-b border-black/10 bg-transparent py-2 text-[10px] font-bold uppercase tracking-widest outline-none focus:border-orange-600"
+                      placeholder="ÖZEL RENK ADI"
                     />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="block text-[8px] uppercase font-bold text-gray-400 tracking-widest">Renk Kodu</label>
                     <input
                       type="color"
                       value={customColorHex}
                       onChange={e => setCustomColorHex(e.target.value)}
-                      className="w-12 h-10 cursor-pointer border border-black/10 bg-transparent"
+                      className="size-8 cursor-pointer border-none bg-transparent"
                     />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (customColorName.trim()) {
+                          setFormData(prev => ({ ...prev, colors: [...prev.colors, { name: customColorName.trim(), hex: customColorHex, images: [] }] }));
+                          setCustomColorName('');
+                        }
+                      }}
+                      className="px-4 bg-black text-white text-[9px] font-black uppercase tracking-widest hover:bg-orange-600 transition-colors"
+                    >
+                      Ekle
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (customColorName.trim()) {
-                        setFormData(prev => ({ ...prev, colors: [...prev.colors, { name: customColorName.trim(), hex: customColorHex }] }));
-                        setCustomColorName('');
-                        setCustomColorHex('#000000');
-                      }
-                    }}
-                    className="px-4 py-2 bg-black dark:bg-white text-white dark:text-black text-[9px] font-black uppercase tracking-widest hover:bg-orange-600 dark:hover:bg-orange-600 dark:hover:text-white transition-all h-10"
+                </div>
+
+                {/* 2. Image Selection & Direct Pairing */}
+                <div className="space-y-4">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">2. Görselleri Yönetin</p>
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    className="border-2 border-dashed border-black/10 p-6 flex flex-col items-center justify-center text-gray-400 hover:border-orange-600 transition-all cursor-pointer group rounded-lg"
                   >
-                    Ekle
-                  </button>
+                    <Upload size={24} className="group-hover:text-orange-600 mb-2 transition-colors" />
+                    <span className="text-[9px] font-black uppercase tracking-widest">Tüm Görselleri Buraya Yükleyin</span>
+                    <input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" accept="image/*" multiple />
+                  </div>
+                  <p className="text-[8px] text-gray-400 uppercase tracking-widest italic">* Önce tüm fotoğrafları yükleyip, sonra aşağıdaki listeden renklerle eşleştirebilirsiniz.</p>
                 </div>
               </div>
 
-              {/* ═══ KUMAŞ ÖZELLİKLERİ ═══ */}
-              <div className="space-y-4 md:col-span-2">
-                <div className="flex items-center gap-2 border-b border-black/5 dark:border-white/5 pb-3">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-orange-600"><path d="M3 6c3-1 7-1 9 0s6 1 9 0"/><path d="M3 12c3-1 7-1 9 0s6 1 9 0"/><path d="M3 18c3-1 7-1 9 0s6 1 9 0"/><path d="M3 6v12"/><path d="M21 6v12"/></svg>
-                  <label className="block text-[10px] uppercase font-black text-gray-400 tracking-widest">Kumaş Özellikleri</label>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  <div className="space-y-1">
-                    <label className="block text-[8px] uppercase font-bold text-gray-400 tracking-widest">Kumaş Türü</label>
-                    <select
-                      value={formData.fabricType}
-                      onChange={e => setFormData({ ...formData, fabricType: e.target.value })}
-                      className="w-full border-b-2 border-black/10 dark:border-white/10 py-2 focus:border-orange-600 outline-none transition-colors bg-white dark:bg-black font-bold uppercase text-xs"
+              {/* Advanced Image List with Color Pairing */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 mt-8">
+                {[
+                  ...formData.images.map(img => ({ url: img, color: null })),
+                  ...formData.colors.flatMap(c => (c.images || []).map(img => ({ url: img, color: c.name })))
+                ].map((item, idx) => (
+                  <div key={idx} className="relative group bg-white dark:bg-black border border-black/5 p-2 rounded shadow-sm">
+                    <img src={item.url} alt="Variant" className="w-full h-32 object-cover mb-2 grayscale group-hover:grayscale-0 transition-all rounded" />
+                    <div className="space-y-1">
+                      <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1">Eşleşen Renk:</p>
+                      <select
+                        value={item.color || ''}
+                        onChange={(e) => assignColorToImage(item.url, e.target.value || null)}
+                        className="w-full text-[9px] font-bold uppercase tracking-widest bg-gray-50 dark:bg-surface-dark border-none p-2 outline-none focus:ring-1 ring-orange-600 flex items-center gap-2"
+                      >
+                        <option value="">Genel Görsel</option>
+                        {formData.colors.map(c => (
+                          <option key={c.name} value={c.name}>{c.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeAnyImage(item.url)}
+                      className="absolute top-1 right-1 bg-white/90 dark:bg-black/90 text-gray-400 hover:text-red-600 size-6 flex items-center justify-center rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-all backdrop-blur"
                     >
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Technical Props Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="space-y-6 border border-black/5 p-6 bg-gray-50/20">
+                <div className="flex items-center gap-2 border-b border-black/5 pb-3">
+                  <Ruler size={16} className="text-orange-600" />
+                  <h3 className="text-[10px] font-black uppercase tracking-[0.2em]">Boyutlar & Teknik</h3>
+                </div>
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-1">
+                    <label className="block text-[8px] font-bold uppercase text-gray-400 tracking-tighter">Gen. (cm)</label>
+                    <input type="number" value={formData.dimWidth} onChange={e => setFormData({ ...formData, dimWidth: e.target.value })} className="w-full border-b border-black/10 py-2 font-bold text-sm bg-transparent outline-none focus:border-orange-600" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="block text-[8px] font-bold uppercase text-gray-400 tracking-tighter">Yük. (cm)</label>
+                    <input type="number" value={formData.dimHeight} onChange={e => setFormData({ ...formData, dimHeight: e.target.value })} className="w-full border-b border-black/10 py-2 font-bold text-sm bg-transparent outline-none focus:border-orange-600" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="block text-[8px] font-bold uppercase text-gray-400 tracking-tighter">Der. (cm)</label>
+                    <input type="number" value={formData.dimDepth} onChange={e => setFormData({ ...formData, dimDepth: e.target.value })} className="w-full border-b border-black/10 py-2 font-bold text-sm bg-transparent outline-none focus:border-orange-600" />
+                  </div>
+                </div>
+                <div className="space-y-4 pt-4">
+                  <div className="space-y-1">
+                    <label className="block text-[10px] uppercase font-black text-gray-400 tracking-wider">3D Model URL (.glb)</label>
+                    <input type="text" value={formData.modelUrl} onChange={e => setFormData({ ...formData, modelUrl: e.target.value })} className="w-full border-b border-black/10 bg-transparent py-2 focus:border-orange-600 font-bold text-[10px]" placeholder="https://...model.glb" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="block text-[10px] uppercase font-black text-gray-400 tracking-wider">Tanıtım Videosu URL</label>
+                    <input type="text" value={formData.videoUrl} onChange={e => setFormData({ ...formData, videoUrl: e.target.value })} className="w-full border-b border-black/10 bg-transparent py-2 focus:border-orange-600 font-bold text-[10px]" placeholder="https://...video.mp4" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-6 border border-black/5 p-6 bg-gray-50/20">
+                <div className="flex items-center gap-2 border-b border-black/5 pb-3">
+                  <Box size={16} className="text-orange-600" />
+                  <h3 className="text-[10px] font-black uppercase tracking-[0.2em]">Kumaş & Malzeme</h3>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="block text-[8px] font-bold uppercase text-gray-400">Kumaş Türü</label>
+                    <select value={formData.fabricType} onChange={e => setFormData({ ...formData, fabricType: e.target.value })} className="w-full border-b border-black/10 py-2 font-bold text-[10px] outline-none">
                       <option value="">Seçiniz...</option>
                       {FABRIC_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                     </select>
                   </div>
                   <div className="space-y-1">
-                    <label className="block text-[8px] uppercase font-bold text-gray-400 tracking-widest">Kumaş Kompozisyonu</label>
-                    <input
-                      type="text"
-                      value={formData.fabricComposition}
-                      onChange={e => setFormData({ ...formData, fabricComposition: e.target.value })}
-                      className="w-full border-b-2 border-black/10 dark:border-white/10 bg-transparent py-2 focus:border-orange-600 outline-none transition-colors font-bold text-xs"
-                      placeholder="örn: 80% Polyester, 20% Pamuk"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="block text-[8px] uppercase font-bold text-gray-400 tracking-widest">Garanti Süresi</label>
-                    <select
-                      value={formData.fabricWarranty}
-                      onChange={e => setFormData({ ...formData, fabricWarranty: e.target.value })}
-                      className="w-full border-b-2 border-black/10 dark:border-white/10 py-2 focus:border-orange-600 outline-none transition-colors bg-white dark:bg-black font-bold uppercase text-xs"
-                    >
+                    <label className="block text-[8px] font-bold uppercase text-gray-400">Garanti</label>
+                    <select value={formData.fabricWarranty} onChange={e => setFormData({ ...formData, fabricWarranty: e.target.value })} className="w-full border-b border-black/10 py-2 font-bold text-[10px] outline-none">
                       <option value="">Seçiniz...</option>
-                      {WARRANTY_OPTIONS.map(p => <option key={p} value={p}>{p}</option>)}
+                      {WARRANTY_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
                     </select>
                   </div>
-                  <div className="space-y-1">
-                    <label className="block text-[8px] uppercase font-bold text-gray-400 tracking-widest">Temizlik Talimatı</label>
-                    <select
-                      value={formData.fabricCleaning}
-                      onChange={e => setFormData({ ...formData, fabricCleaning: e.target.value })}
-                      className="w-full border-b-2 border-black/10 dark:border-white/10 py-2 focus:border-orange-600 outline-none transition-colors bg-white dark:bg-black font-bold uppercase text-xs"
-                    >
-                      <option value="">Seçiniz...</option>
-                      {CLEANING_OPTIONS.map(c => <option key={c} value={c}>{c}</option>)}
-                    </select>
+                  <div className="space-y-1 col-span-2">
+                    <label className="block text-[8px] font-bold uppercase text-gray-400">Kumaş İçeriği</label>
+                    <input type="text" value={formData.fabricComposition} onChange={e => setFormData({ ...formData, fabricComposition: e.target.value })} className="w-full border-b border-black/10 py-2 font-bold text-xs bg-transparent outline-none focus:border-orange-600" placeholder="örn: 80% Polyester, 20% Pamuk" />
                   </div>
-                  <div className="space-y-1">
-                    <label className="block text-[8px] uppercase font-bold text-gray-400 tracking-widest">Menşei</label>
-                    <select
-                      value={formData.fabricOrigin}
-                      onChange={e => setFormData({ ...formData, fabricOrigin: e.target.value })}
-                      className="w-full border-b-2 border-black/10 dark:border-white/10 py-2 focus:border-orange-600 outline-none transition-colors bg-white dark:bg-black font-bold uppercase text-xs"
-                    >
-                      <option value="">Seçiniz...</option>
-                      {ORIGIN_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              {/* ═══ ÖLÇÜ BİLGİLERİ ═══ */}
-              <div className="space-y-4 md:col-span-2">
-                <div className="flex items-center gap-2 border-b border-black/5 dark:border-white/5 pb-3">
-                  <Ruler className="text-orange-600" size={16} />
-                  <label className="block text-[10px] uppercase font-black text-gray-400 tracking-widest">Ölçü Bilgileri (CM)</label>
-                </div>
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="space-y-1">
-                    <label className="block text-[8px] uppercase font-bold text-gray-400 tracking-widest">Genişlik</label>
-                    <input
-                      type="number"
-                      value={formData.dimWidth}
-                      onChange={e => setFormData({ ...formData, dimWidth: e.target.value })}
-                      className="w-full border-b-2 border-black/10 dark:border-white/10 bg-transparent py-2 focus:border-orange-600 outline-none transition-colors font-bold text-xs"
-                      placeholder="cm"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="block text-[8px] uppercase font-bold text-gray-400 tracking-widest">Yükseklik</label>
-                    <input
-                      type="number"
-                      value={formData.dimHeight}
-                      onChange={e => setFormData({ ...formData, dimHeight: e.target.value })}
-                      className="w-full border-b-2 border-black/10 dark:border-white/10 bg-transparent py-2 focus:border-orange-600 outline-none transition-colors font-bold text-xs"
-                      placeholder="cm"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="block text-[8px] uppercase font-bold text-gray-400 tracking-widest">Derinlik</label>
-                    <input
-                      type="number"
-                      value={formData.dimDepth}
-                      onChange={e => setFormData({ ...formData, dimDepth: e.target.value })}
-                      className="w-full border-b-2 border-black/10 dark:border-white/10 bg-transparent py-2 focus:border-orange-600 outline-none transition-colors font-bold text-xs"
-                      placeholder="cm"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-6">
-                <div className="space-y-3">
-                  <label className="block text-[10px] uppercase font-black text-gray-400 tracking-widest">Dosya & Medya (Görseller)</label>
-                  
-                  {/* Renk Bazlı Görsel Tab'ları */}
-                  {formData.colors.length > 0 && (
-                    <div className="flex flex-wrap gap-1 border-b border-black/5 dark:border-white/5 pb-2">
-                      <button
-                        type="button"
-                        onClick={() => setActiveColorTab(null)}
-                        className={`px-3 py-1.5 text-[8px] font-black uppercase tracking-widest transition-all ${
-                          activeColorTab === null
-                            ? 'bg-orange-600 text-white'
-                            : 'bg-gray-100 dark:bg-surface-dark text-gray-500 hover:bg-gray-200'
-                        }`}
-                      >
-                        Genel Görseller
-                      </button>
-                      {formData.colors.map((color) => (
-                        <button
-                          key={color.name}
-                          type="button"
-                          onClick={() => setActiveColorTab(color.name)}
-                          className={`px-3 py-1.5 text-[8px] font-black uppercase tracking-widest transition-all flex items-center gap-1.5 ${
-                            activeColorTab === color.name
-                              ? 'bg-orange-600 text-white'
-                              : 'bg-gray-100 dark:bg-surface-dark text-gray-500 hover:bg-gray-200'
-                          }`}
-                        >
-                          <div className="w-3 h-3 rounded-full border border-white/50 shadow-sm" style={{ backgroundColor: color.hex }} />
-                          {color.name}
-                          {(color.images?.length || 0) > 0 && (
-                            <span className="bg-white/20 px-1 rounded text-[7px]">{color.images?.length}</span>
-                          )}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Aktif tab bilgisi */}
-                  {activeColorTab && (
-                    <div className="flex items-center gap-2 px-3 py-2 bg-orange-50 dark:bg-orange-900/10 border border-orange-200 dark:border-orange-800">
-                      <div className="w-4 h-4 rounded-full border shadow-sm" style={{ backgroundColor: formData.colors.find(c => c.name === activeColorTab)?.hex }} />
-                      <span className="text-[9px] font-black uppercase tracking-widest text-orange-600">
-                        {activeColorTab} rengi için görseller yükleniyor
-                      </span>
-                    </div>
-                  )}
-
-                  <div
-                    onClick={() => fileInputRef.current?.click()}
-                    className={`relative border-2 border-dashed p-4 min-h-[120px] flex flex-wrap gap-4 items-center justify-center text-gray-400 transition-all cursor-pointer group ${
-                      activeColorTab 
-                        ? 'border-orange-300 dark:border-orange-800 hover:border-orange-600' 
-                        : 'border-black/10 dark:border-white/10 hover:border-orange-600'
-                    }`}
-                  >
-                    {activeColorTab ? (
-                      // Renk bazlı görselleri göster
-                      (() => {
-                        const colorImages = formData.colors.find(c => c.name === activeColorTab)?.images || [];
-                        return colorImages.length > 0 ? (
-                          colorImages.map((preview, idx) => (
-                            <div key={idx} className="relative w-20 h-20 border border-orange-200">
-                              <img src={preview} alt={`${activeColorTab} ${idx}`} className="w-full h-full object-cover" />
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  removeImage(idx, activeColorTab);
-                                }}
-                                className="absolute -top-2 -right-2 bg-red-600 text-white rounded-full p-1 hover:bg-black transition-colors"
-                              >
-                                <Trash2 size={12} />
-                              </button>
-                            </div>
-                          ))
-                        ) : (
-                          <div className="flex flex-col items-center">
-                            <Upload size={20} className="group-hover:text-orange-600 transition-colors" />
-                            <span className="text-[9px] font-black uppercase mt-2 tracking-widest">{activeColorTab} GÖRSELLERİNİ YÜKLE</span>
-                          </div>
-                        );
-                      })()
-                    ) : (
-                      // Genel görselleri göster
-                      imagePreviews.length > 0 ? (
-                        imagePreviews.map((preview, idx) => (
-                          <div key={idx} className="relative w-20 h-20 border border-black/5">
-                            <img src={preview} alt={`Preview ${idx}`} className="w-full h-full object-cover" />
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                removeImage(idx);
-                              }}
-                              className="absolute -top-2 -right-2 bg-red-600 text-white rounded-full p-1 hover:bg-black transition-colors"
-                            >
-                              <Trash2 size={12} />
-                            </button>
-                          </div>
-                        ))
-                      ) : (
-                        <div className="flex flex-col items-center">
-                          <Upload size={20} className="group-hover:text-orange-600 transition-colors" />
-                          <span className="text-[9px] font-black uppercase mt-2 tracking-widest">GÖRSELLERİ YÜKLE</span>
-                        </div>
-                      )
-                    )}
-                    <input
-                      type="file"
-                      ref={fileInputRef}
-                      onChange={handleFileSelect}
-                      className="hidden"
-                      accept="image/*"
-                      multiple
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="block text-[10px] uppercase font-black text-gray-400 tracking-widest">3D Model (.GLB)</label>
-                  <div className="flex flex-col gap-3">
-                    <div
-                      onClick={() => modelInputRef.current?.click()}
-                      className={`relative border-2 border-dashed ${formData.modelUrl ? 'border-blue-600/50 bg-blue-50/5' : 'border-black/10 dark:border-white/10'} p-4 min-h-[100px] flex flex-col items-center justify-center text-gray-400 hover:border-blue-600 transition-all cursor-pointer group`}
-                    >
-                      {formData.modelUrl ? (
-                        <div className="flex flex-col items-center gap-2">
-                          <Box size={20} className="text-blue-600" />
-                          <span className="text-[9px] font-black uppercase tracking-widest text-blue-600">MODEL HAZIR</span>
-                          <div className="text-[8px] font-mono opacity-50 truncate max-w-[150px]">
-                            {formData.modelUrl.startsWith('data:') ? 'Lokal Dosya' : formData.modelUrl}
-                          </div>
-                        </div>
-                      ) : (
-                        <>
-                          <Box size={20} className="group-hover:text-blue-600 transition-colors" />
-                          <span className="text-[9px] font-black uppercase mt-2 tracking-widest">MODEL YÜKLE</span>
-                        </>
-                      )}
-                      <input
-                        type="file"
-                        ref={modelInputRef}
-                        onChange={handleModelSelect}
-                        className="hidden"
-                        accept=".glb,.gltf"
-                      />
-                    </div>
-                    <input
-                      type="text"
-                      value={formData.modelUrl.startsWith('data:') ? '' : formData.modelUrl}
-                      onChange={e => setFormData({ ...formData, modelUrl: e.target.value })}
-                      className="w-full border-b border-black/10 dark:border-white/10 bg-transparent py-2 focus:border-blue-600 outline-none transition-colors font-bold text-[8px] uppercase tracking-widest placeholder:text-gray-300"
-                      placeholder="VEYA MODEL URL'Sİ YAPIŞTIRIN"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="block text-[10px] uppercase font-black text-gray-400 tracking-widest">Video URL (Opsiyonel)</label>
-                  <input
-                    type="text"
-                    value={formData.videoUrl}
-                    onChange={e => setFormData({ ...formData, videoUrl: e.target.value })}
-                    className="w-full border-b border-black/10 dark:border-white/10 bg-transparent py-2 focus:border-orange-600 outline-none transition-colors font-bold text-[10px] uppercase tracking-widest placeholder:text-gray-300"
-                    placeholder="ÜRÜN VİDEOSU URL'Sİ (MP4, WEBM)"
-                  />
-                  <p className="text-[8px] text-gray-400 uppercase tracking-widest">
-                    * Video, ürün detay sayfasında gösterilecektir
-                  </p>
                 </div>
               </div>
             </div>
 
-            <div className="relative space-y-2">
-              <label className="block text-[10px] uppercase font-black text-gray-400 tracking-widest">Hikaye & Detay</label>
+            {/* Description / Story */}
+            <div className="space-y-2">
+              <label className="block text-[10px] uppercase font-black text-gray-400 tracking-[0.3em]">Hikaye & Ürün Tanıtımı</label>
               <textarea
                 required
                 value={formData.description}
                 onChange={e => setFormData({ ...formData, description: e.target.value })}
-                className="w-full border border-black/10 dark:border-white/10 p-6 h-40 outline-none focus:border-orange-600 bg-transparent transition-colors font-light text-sm leading-relaxed"
-                placeholder="Ürünün ruhunu anlatın..."
+                className="w-full border border-black/10 p-8 h-56 outline-none focus:border-orange-600 bg-transparent transition-colors font-light text-sm leading-relaxed"
+                placeholder="Bu ürünü özel kılan detayları, zanaat hikayesini ve yaşam alanına katacağı ruhu anlatın..."
               />
             </div>
 
-            <div className="flex justify-end gap-6 pt-4">
+            <div className="flex justify-between items-center pt-8 border-t border-black/5">
+              <button
+                type="button"
+                onClick={() => setIsAdding(false)}
+                className="text-[10px] font-black uppercase tracking-widest text-gray-300 hover:text-black transition-colors"
+              >
+                Vazgeç
+              </button>
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="bg-orange-600 text-white px-12 py-4 text-[10px] uppercase tracking-[0.3em] font-black hover:bg-black dark:hover:bg-white dark:hover:text-black transition-all shadow-xl shadow-orange-600/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                className="bg-orange-600 text-white px-20 py-5 text-[10px] font-black uppercase tracking-[0.4em] shadow-2xl hover:bg-black transition-all flex items-center gap-4 group"
               >
-                {isSubmitting ? <Loader2 className="animate-spin" size={14} /> : null}
-                {isSubmitting ? 'Kaydediliyor...' : "Katalog'a Kaydet"}
+                {isSubmitting ? <Loader2 className="animate-spin" size={16} /> : null}
+                {isSubmitting ? 'KAYDEDİLİYOR...' : 'KATALOGA EKLE'}
               </button>
             </div>
           </form>
         </div>
       )}
 
-      {isEditing && (
-        <div className="bg-white dark:bg-surface-dark p-8 mb-12 border-l-8 border-blue-600 shadow-2xl animate-in fade-in slide-in-from-top-4">
+      {isEditing && editingProduct && (
+        <div className="bg-white dark:bg-surface-dark p-8 mb-12 border-l-8 border-blue-600 shadow-2xl animate-[fadeIn_0.5s_ease-out]">
           <div className="flex justify-between items-center mb-8 border-b border-black/5 dark:border-white/5 pb-4">
-            <h2 className="text-xl font-black uppercase tracking-widest">Ürün Düzenle</h2>
+            <h2 className="text-2xl font-black uppercase tracking-widest italic">Ürün Düzenle: <span className="text-blue-600 font-black">{editingProduct.name}</span></h2>
             <button
               onClick={() => {
                 setIsEditing(false);
                 setEditingProduct(null);
-                setFormData({ name: '', price: '', category: 'Oturma Grubu', description: '', stock: '5', images: [], modelUrl: '', videoUrl: '', colors: [], fabricType: '', fabricComposition: '', fabricPillResistance: '', fabricCleaning: '', fabricOrigin: '' });
-                setImagePreviews([]);
+                setFormData({ name: '', price: '', category: 'Oturma Grubu', description: '', stock: '5', images: [], modelUrl: '', videoUrl: '', colors: [], fabricType: '', fabricComposition: '', fabricWarranty: '', fabricCleaning: '', fabricOrigin: '', dimWidth: '', dimHeight: '', dimDepth: '', discountPrice: '' });
               }}
-              className="text-gray-400 hover:text-red-600 text-sm uppercase tracking-widest font-bold"
+              className="text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-red-500 transition-colors"
             >
-              İptal
+              Vazgeç
             </button>
           </div>
-          <form onSubmit={handleUpdate} className="space-y-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className="space-y-2">
-                <label className="block text-[10px] uppercase font-black text-gray-400 tracking-widest">Ürün İsmi</label>
+          
+          <form onSubmit={handleUpdate} className="space-y-10">
+            {/* Essential Info Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              <div className="space-y-2 col-span-1 md:col-span-2">
+                <label className="block text-[10px] uppercase font-black text-gray-400 tracking-[0.2em]">Ürün İsmi</label>
                 <input
                   type="text"
                   required
                   value={formData.name}
                   onChange={e => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full border-b-2 border-black/10 dark:border-white/10 bg-transparent py-3 focus:border-blue-600 outline-none transition-colors font-bold uppercase tracking-tight text-lg"
-                  placeholder="örn: LUNA LOUNGE"
+                  className="w-full border-b-2 border-black/10 dark:border-white/10 bg-transparent py-3 focus:border-blue-600 outline-none transition-colors font-bold uppercase tracking-tight text-xl"
                 />
               </div>
               <div className="space-y-2">
-                <label className="block text-[10px] uppercase font-black text-gray-400 tracking-widest">Fiyat (₺)</label>
+                <label className="block text-[10px] uppercase font-black text-gray-400 tracking-[0.2em]">Kategori</label>
+                <select
+                  value={formData.category}
+                  onChange={e => setFormData({ ...formData, category: e.target.value })}
+                  className="w-full border-b-2 border-black/10 dark:border-white/10 py-3 focus:border-blue-600 outline-none transition-colors bg-white dark:bg-black font-bold uppercase text-sm"
+                >
+                  <option>Oturma Grubu</option>
+                  <option>Yemek Odası</option>
+                  <option>Yatak Odası</option>
+                  <option>Aksesuar</option>
+                  <option>Aydınlatma</option>
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-[10px] uppercase font-black text-gray-400 tracking-[0.2em]">Fiyat (₺)</label>
                 <input
                   type="number"
                   required
@@ -1019,417 +862,212 @@ const Admin: React.FC<AdminProps> = ({ products, onAddProduct, onUpdateProduct, 
                   className="w-full border-b-2 border-black/10 dark:border-white/10 bg-transparent py-3 focus:border-blue-600 outline-none transition-colors font-bold text-lg"
                 />
               </div>
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <label className="block text-[10px] uppercase font-black text-gray-400 tracking-widest">Kategori</label>
-                  <select
-                    value={formData.category}
-                    onChange={e => setFormData({ ...formData, category: e.target.value })}
-                    className="w-full border-b-2 border-black/10 dark:border-white/10 py-3 focus:border-blue-600 outline-none transition-colors bg-white dark:bg-black font-bold uppercase text-sm"
-                  >
-                    <option>Oturma Grubu</option>
-                    <option>Yemek Odası</option>
-                    <option>Yatak Odası</option>
-                    <option>Aksesuar</option>
-                    <option>Aydınlatma</option>
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <label className="block text-[10px] uppercase font-black text-gray-400 tracking-widest">Stok Miktarı</label>
-                  <input
-                    type="number"
-                    value={formData.stock}
-                    onChange={e => setFormData({ ...formData, stock: e.target.value })}
-                    className="w-full border-b-2 border-black/10 dark:border-white/10 bg-transparent py-3 focus:border-blue-600 outline-none transition-colors font-bold text-sm"
-                  />
-                </div>
+              <div className="space-y-2">
+                <label className="block text-[10px] uppercase font-black text-blue-600 tracking-[0.2em]">İNDİRİMLİ FİYAT (₺)</label>
+                <input
+                  type="number"
+                  value={formData.discountPrice}
+                  onChange={e => setFormData({ ...formData, discountPrice: e.target.value })}
+                  className="w-full border-b-2 border-blue-600/20 bg-blue-50/5 dark:bg-blue-950/5 py-3 focus:border-red-600 outline-none transition-colors font-bold text-lg text-blue-600"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="block text-[10px] uppercase font-black text-gray-400 tracking-[0.2em]">Stok Miktarı</label>
+                <input
+                  type="number"
+                  value={formData.stock}
+                  onChange={e => setFormData({ ...formData, stock: e.target.value })}
+                  className="w-full border-b-2 border-black/10 dark:border-white/10 bg-transparent py-3 focus:border-blue-600 outline-none transition-colors font-bold text-sm"
+                />
+              </div>
+            </div>
+
+            {/* Colors and Images Combined */}
+            <div className="space-y-6 bg-gray-50/50 dark:bg-white/5 p-8 border border-black/5 dark:border-white/5">
+              <div className="flex items-center gap-3 border-b border-black/5 pb-4">
+                <Palette className="text-blue-600" size={18} />
+                <h3 className="text-[12px] font-black uppercase tracking-[0.3em]">Renk Seçenekleri & Görseller</h3>
               </div>
 
-              {/* ═══ RENK SEÇENEKLERİ ═══ */}
-              <div className="space-y-4 md:col-span-2">
-                <div className="flex items-center gap-2 border-b border-black/5 dark:border-white/5 pb-3">
-                  <Palette size={16} className="text-blue-600" />
-                  <label className="block text-[10px] uppercase font-black text-gray-400 tracking-widest">Renk Seçenekleri</label>
-                </div>
-                
-                {/* Selected Colors */}
-                {formData.colors.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mb-3">
-                    {formData.colors.map((color, idx) => (
-                      <div key={idx} className="flex items-center gap-2 bg-gray-50 dark:bg-surface-dark border border-black/5 dark:border-white/5 px-3 py-2 group hover:border-red-300 transition-colors">
-                        <div className="w-5 h-5 rounded-full border-2 border-white shadow-md" style={{ backgroundColor: color.hex }} />
-                        <span className="text-[10px] font-bold uppercase tracking-wider">{color.name}</span>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="space-y-4">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">1. Renkleri Belirleyin</p>
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {PRESET_COLORS.map(color => {
+                      const isSelected = formData.colors.some(c => c.hex === color.hex);
+                      return (
                         <button
+                          key={color.hex}
                           type="button"
-                          onClick={() => setFormData(prev => ({ ...prev, colors: prev.colors.filter((_, i) => i !== idx) }))}
-                          className="text-gray-300 hover:text-red-600 transition-colors ml-1"
+                          onClick={() => {
+                            if (isSelected) {
+                              setFormData(prev => ({ ...prev, colors: prev.colors.filter(c => c.hex !== color.hex) }));
+                            } else {
+                              setFormData(prev => ({ ...prev, colors: [...prev.colors, { ...color, images: [] }] }));
+                            }
+                          }}
+                          className={`flex items-center gap-2 px-3 py-2 border-2 transition-all text-[9px] font-bold uppercase ${isSelected ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/10' : 'border-black/5 dark:border-white/5 hover:border-black/20'}`}
                         >
-                          <X size={12} />
+                          <div className="size-3 rounded-full shadow-sm" style={{ backgroundColor: color.hex }} />
+                          {color.name}
                         </button>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
-                )}
-
-                {/* Preset Colors Grid */}
-                <div className="flex flex-wrap gap-2">
-                  {PRESET_COLORS.map((color) => {
-                    const isSelected = formData.colors.some(c => c.hex === color.hex);
-                    return (
-                      <button
-                        key={color.hex}
-                        type="button"
-                        onClick={() => {
-                          if (isSelected) {
-                            setFormData(prev => ({ ...prev, colors: prev.colors.filter(c => c.hex !== color.hex) }));
-                          } else {
-                            setFormData(prev => ({ ...prev, colors: [...prev.colors, color] }));
-                          }
-                        }}
-                        className={`flex items-center gap-2 px-3 py-2 border-2 transition-all text-[9px] font-bold uppercase tracking-wider ${isSelected ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/10' : 'border-black/5 dark:border-white/5 hover:border-black/20'}`}
-                        title={color.name}
-                      >
-                        <div className="w-4 h-4 rounded-full border border-black/10 shadow-sm" style={{ backgroundColor: color.hex }} />
-                        {color.name}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* Custom Color Input */}
-                <div className="flex items-end gap-3 mt-3">
-                  <div className="flex-1 space-y-1">
-                    <label className="block text-[8px] uppercase font-bold text-gray-400 tracking-widest">Özel Renk Adı</label>
+                  <div className="flex gap-2">
                     <input
                       type="text"
                       value={customColorName}
                       onChange={e => setCustomColorName(e.target.value)}
-                      className="w-full border-b border-black/10 dark:border-white/10 bg-transparent py-2 focus:border-blue-600 outline-none transition-colors font-bold text-xs uppercase tracking-wider"
-                      placeholder="örn: Petrol Mavisi"
+                      className="flex-1 border-b border-black/10 bg-transparent py-2 text-[10px] font-bold uppercase tracking-widest outline-none focus:border-blue-600"
+                      placeholder="ÖZEL RENK ADI"
                     />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="block text-[8px] uppercase font-bold text-gray-400 tracking-widest">Renk Kodu</label>
                     <input
                       type="color"
                       value={customColorHex}
                       onChange={e => setCustomColorHex(e.target.value)}
-                      className="w-12 h-10 cursor-pointer border border-black/10 bg-transparent"
+                      className="size-8 cursor-pointer border-none bg-transparent"
                     />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (customColorName.trim()) {
+                          setFormData(prev => ({ ...prev, colors: [...prev.colors, { name: customColorName.trim(), hex: customColorHex, images: [] }] }));
+                          setCustomColorName('');
+                        }
+                      }}
+                      className="px-4 bg-black text-white text-[9px] font-black uppercase tracking-widest hover:bg-blue-600 transition-colors"
+                    >
+                      Ekle
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (customColorName.trim()) {
-                        setFormData(prev => ({ ...prev, colors: [...prev.colors, { name: customColorName.trim(), hex: customColorHex }] }));
-                        setCustomColorName('');
-                        setCustomColorHex('#000000');
-                      }
-                    }}
-                    className="px-4 py-2 bg-black dark:bg-white text-white dark:text-black text-[9px] font-black uppercase tracking-widest hover:bg-blue-600 dark:hover:bg-blue-600 dark:hover:text-white transition-all h-10"
+                </div>
+
+                <div className="space-y-4">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">2. Görselleri Yönetin</p>
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    className="border-2 border-dashed border-black/10 p-6 flex flex-col items-center justify-center text-gray-400 hover:border-blue-600 transition-all cursor-pointer group rounded-lg"
                   >
-                    Ekle
-                  </button>
+                    <Upload size={24} className="group-hover:text-blue-600 mb-2 transition-colors" />
+                    <span className="text-[9px] font-black uppercase tracking-widest">Görsel Ekle</span>
+                    <input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" accept="image/*" multiple />
+                  </div>
                 </div>
               </div>
 
-              {/* ═══ KUMAŞ ÖZELLİKLERİ ═══ */}
-              <div className="space-y-4 md:col-span-2">
-                <div className="flex items-center gap-2 border-b border-black/5 dark:border-white/5 pb-3">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-600"><path d="M3 6c3-1 7-1 9 0s6 1 9 0"/><path d="M3 12c3-1 7-1 9 0s6 1 9 0"/><path d="M3 18c3-1 7-1 9 0s6 1 9 0"/><path d="M3 6v12"/><path d="M21 6v12"/></svg>
-                  <label className="block text-[10px] uppercase font-black text-gray-400 tracking-widest">Kumaş Özellikleri</label>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  <div className="space-y-1">
-                    <label className="block text-[8px] uppercase font-bold text-gray-400 tracking-widest">Kumaş Türü</label>
-                    <select
-                      value={formData.fabricType}
-                      onChange={e => setFormData({ ...formData, fabricType: e.target.value })}
-                      className="w-full border-b-2 border-black/10 dark:border-white/10 py-2 focus:border-blue-600 outline-none transition-colors bg-white dark:bg-black font-bold uppercase text-xs"
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 mt-8">
+                {[
+                  ...formData.images.map(img => ({ url: img, color: null })),
+                  ...formData.colors.flatMap(c => (c.images || []).map(img => ({ url: img, color: c.name })))
+                ].map((item, idx) => (
+                  <div key={idx} className="relative group bg-white dark:bg-black border border-black/5 p-2 rounded shadow-sm">
+                    <img src={item.url} alt="Variant" className="w-full h-32 object-cover mb-2 grayscale group-hover:grayscale-0 transition-all rounded" />
+                    <div className="space-y-1">
+                      <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1">Eşleşen Renk:</p>
+                      <select
+                        value={item.color || ''}
+                        onChange={(e) => assignColorToImage(item.url, e.target.value || null)}
+                        className="w-full text-[9px] font-bold uppercase tracking-widest bg-gray-50 dark:bg-surface-dark border-none p-2 outline-none focus:ring-1 ring-blue-600"
+                      >
+                        <option value="">Genel Görsel</option>
+                        {formData.colors.map(c => (
+                          <option key={c.name} value={c.name}>{c.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeAnyImage(item.url)}
+                      className="absolute top-1 right-1 bg-white/90 dark:bg-black/90 text-gray-400 hover:text-red-600 size-6 flex items-center justify-center rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-all backdrop-blur"
                     >
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Technical Props Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="space-y-6 border border-black/5 p-6 bg-gray-50/20">
+                <div className="flex items-center gap-2 border-b border-black/5 pb-3">
+                  <Ruler size={16} className="text-blue-600" />
+                  <h3 className="text-[10px] font-black uppercase tracking-[0.2em]">Boyutlar & Teknik</h3>
+                </div>
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-1">
+                    <label className="block text-[8px] font-bold uppercase text-gray-400 tracking-tighter">Gen. (cm)</label>
+                    <input type="number" value={formData.dimWidth} onChange={e => setFormData({ ...formData, dimWidth: e.target.value })} className="w-full border-b border-black/10 py-2 font-bold text-sm bg-transparent outline-none focus:border-blue-600" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="block text-[8px] font-bold uppercase text-gray-400 tracking-tighter">Yük. (cm)</label>
+                    <input type="number" value={formData.dimHeight} onChange={e => setFormData({ ...formData, dimHeight: e.target.value })} className="w-full border-b border-black/10 py-2 font-bold text-sm bg-transparent outline-none focus:border-blue-600" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="block text-[8px] font-bold uppercase text-gray-400 tracking-tighter">Der. (cm)</label>
+                    <input type="number" value={formData.dimDepth} onChange={e => setFormData({ ...formData, dimDepth: e.target.value })} className="w-full border-b border-black/10 py-2 font-bold text-sm bg-transparent outline-none focus:border-blue-600" />
+                  </div>
+                </div>
+                <div className="space-y-4 pt-4">
+                  <div className="space-y-1">
+                    <label className="block text-[10px] uppercase font-black text-gray-400 tracking-wider">3D Model URL (.glb)</label>
+                    <input type="text" value={formData.modelUrl} onChange={e => setFormData({ ...formData, modelUrl: e.target.value })} className="w-full border-b border-black/10 bg-transparent py-2 focus:border-blue-600 font-bold text-[10px]" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="block text-[10px] uppercase font-black text-gray-400 tracking-wider">Video URL</label>
+                    <input type="text" value={formData.videoUrl} onChange={e => setFormData({ ...formData, videoUrl: e.target.value })} className="w-full border-b border-black/10 bg-transparent py-2 focus:border-blue-600 font-bold text-[10px]" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-6 border border-black/5 p-6 bg-gray-50/20">
+                <div className="flex items-center gap-2 border-b border-black/5 pb-3">
+                  <Box size={16} className="text-blue-600" />
+                  <h3 className="text-[10px] font-black uppercase tracking-[0.2em]">Kumaş & Malzeme</h3>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="block text-[8px] font-bold uppercase text-gray-400">Kumaş Türü</label>
+                    <select value={formData.fabricType} onChange={e => setFormData({ ...formData, fabricType: e.target.value })} className="w-full border-b border-black/10 py-2 font-bold text-[10px] outline-none">
                       <option value="">Seçiniz...</option>
                       {FABRIC_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                     </select>
                   </div>
                   <div className="space-y-1">
-                    <label className="block text-[8px] uppercase font-bold text-gray-400 tracking-widest">Kumaş Kompozisyonu</label>
-                    <input
-                      type="text"
-                      value={formData.fabricComposition}
-                      onChange={e => setFormData({ ...formData, fabricComposition: e.target.value })}
-                      className="w-full border-b-2 border-black/10 dark:border-white/10 bg-transparent py-2 focus:border-blue-600 outline-none transition-colors font-bold text-xs"
-                      placeholder="örn: 80% Polyester, 20% Pamuk"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="block text-[8px] uppercase font-bold text-gray-400 tracking-widest">Garanti Süresi</label>
-                    <select
-                      value={formData.fabricWarranty}
-                      onChange={e => setFormData({ ...formData, fabricWarranty: e.target.value })}
-                      className="w-full border-b-2 border-black/10 dark:border-white/10 py-2 focus:border-blue-600 outline-none transition-colors bg-white dark:bg-black font-bold uppercase text-xs"
-                    >
+                    <label className="block text-[8px] font-bold uppercase text-gray-400">Garanti</label>
+                    <select value={formData.fabricWarranty} onChange={e => setFormData({ ...formData, fabricWarranty: e.target.value })} className="w-full border-b border-black/10 py-2 font-bold text-[10px] outline-none">
                       <option value="">Seçiniz...</option>
-                      {WARRANTY_OPTIONS.map(p => <option key={p} value={p}>{p}</option>)}
+                      {WARRANTY_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
                     </select>
                   </div>
-                  <div className="space-y-1">
-                    <label className="block text-[8px] uppercase font-bold text-gray-400 tracking-widest">Temizlik Talimatı</label>
-                    <select
-                      value={formData.fabricCleaning}
-                      onChange={e => setFormData({ ...formData, fabricCleaning: e.target.value })}
-                      className="w-full border-b-2 border-black/10 dark:border-white/10 py-2 focus:border-blue-600 outline-none transition-colors bg-white dark:bg-black font-bold uppercase text-xs"
-                    >
-                      <option value="">Seçiniz...</option>
-                      {CLEANING_OPTIONS.map(c => <option key={c} value={c}>{c}</option>)}
-                    </select>
+                  <div className="space-y-1 col-span-2">
+                    <label className="block text-[8px] font-bold uppercase text-gray-400">Kumaş İçeriği</label>
+                    <input type="text" value={formData.fabricComposition} onChange={e => setFormData({ ...formData, fabricComposition: e.target.value })} className="w-full border-b border-black/10 py-2 font-bold text-xs bg-transparent outline-none focus:border-blue-600" />
                   </div>
-                  <div className="space-y-1">
-                    <label className="block text-[8px] uppercase font-bold text-gray-400 tracking-widest">Menşei</label>
-                    <select
-                      value={formData.fabricOrigin}
-                      onChange={e => setFormData({ ...formData, fabricOrigin: e.target.value })}
-                      className="w-full border-b-2 border-black/10 dark:border-white/10 py-2 focus:border-blue-600 outline-none transition-colors bg-white dark:bg-black font-bold uppercase text-xs"
-                    >
-                      <option value="">Seçiniz...</option>
-                      {ORIGIN_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              {/* ═══ ÖLÇÜ BİLGİLERİ ═══ */}
-              <div className="space-y-4 md:col-span-2">
-                <div className="flex items-center gap-2 border-b border-black/5 dark:border-white/5 pb-3">
-                  <Ruler className="text-blue-600" size={16} />
-                  <label className="block text-[10px] uppercase font-black text-gray-400 tracking-widest">Ölçü Bilgileri (CM)</label>
-                </div>
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="space-y-1">
-                    <label className="block text-[8px] uppercase font-bold text-gray-400 tracking-widest">Genişlik</label>
-                    <input
-                      type="number"
-                      value={formData.dimWidth}
-                      onChange={e => setFormData({ ...formData, dimWidth: e.target.value })}
-                      className="w-full border-b-2 border-black/10 dark:border-white/10 bg-transparent py-2 focus:border-blue-600 outline-none transition-colors font-bold text-xs"
-                      placeholder="cm"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="block text-[8px] uppercase font-bold text-gray-400 tracking-widest">Yükseklik</label>
-                    <input
-                      type="number"
-                      value={formData.dimHeight}
-                      onChange={e => setFormData({ ...formData, dimHeight: e.target.value })}
-                      className="w-full border-b-2 border-black/10 dark:border-white/10 bg-transparent py-2 focus:border-blue-600 outline-none transition-colors font-bold text-xs"
-                      placeholder="cm"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="block text-[8px] uppercase font-bold text-gray-400 tracking-widest">Derinlik</label>
-                    <input
-                      type="number"
-                      value={formData.dimDepth}
-                      onChange={e => setFormData({ ...formData, dimDepth: e.target.value })}
-                      className="w-full border-b-2 border-black/10 dark:border-white/10 bg-transparent py-2 focus:border-blue-600 outline-none transition-colors font-bold text-xs"
-                      placeholder="cm"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-6">
-                <div className="space-y-3">
-                  <label className="block text-[10px] uppercase font-black text-gray-400 tracking-widest">Dosya & Medya (Görseller)</label>
-                  
-                  {/* Renk Bazlı Görsel Tab'ları */}
-                  {formData.colors.length > 0 && (
-                    <div className="flex flex-wrap gap-1 border-b border-black/5 dark:border-white/5 pb-2">
-                      <button
-                        type="button"
-                        onClick={() => setActiveColorTab(null)}
-                        className={`px-3 py-1.5 text-[8px] font-black uppercase tracking-widest transition-all ${
-                          activeColorTab === null
-                            ? 'bg-blue-600 text-white'
-                            : 'bg-gray-100 dark:bg-surface-dark text-gray-500 hover:bg-gray-200'
-                        }`}
-                      >
-                        Genel Görseller
-                      </button>
-                      {formData.colors.map((color) => (
-                        <button
-                          key={color.name}
-                          type="button"
-                          onClick={() => setActiveColorTab(color.name)}
-                          className={`px-3 py-1.5 text-[8px] font-black uppercase tracking-widest transition-all flex items-center gap-1.5 ${
-                            activeColorTab === color.name
-                              ? 'bg-blue-600 text-white'
-                              : 'bg-gray-100 dark:bg-surface-dark text-gray-500 hover:bg-gray-200'
-                          }`}
-                        >
-                          <div className="w-3 h-3 rounded-full border border-white/50 shadow-sm" style={{ backgroundColor: color.hex }} />
-                          {color.name}
-                          {(color.images?.length || 0) > 0 && (
-                            <span className="bg-white/20 px-1 rounded text-[7px]">{color.images?.length}</span>
-                          )}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Aktif tab bilgisi */}
-                  {activeColorTab && (
-                    <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800">
-                      <div className="w-4 h-4 rounded-full border shadow-sm" style={{ backgroundColor: formData.colors.find(c => c.name === activeColorTab)?.hex }} />
-                      <span className="text-[9px] font-black uppercase tracking-widest text-blue-600">
-                        {activeColorTab} rengi için görseller yükleniyor
-                      </span>
-                    </div>
-                  )}
-
-                  <div
-                    onClick={() => fileInputRef.current?.click()}
-                    className={`relative border-2 border-dashed p-4 min-h-[120px] flex flex-wrap gap-4 items-center justify-center text-gray-400 transition-all cursor-pointer group ${
-                      activeColorTab 
-                        ? 'border-blue-300 dark:border-blue-800 hover:border-blue-600' 
-                        : 'border-black/10 dark:border-white/10 hover:border-blue-600'
-                    }`}
-                  >
-                    {activeColorTab ? (
-                      (() => {
-                        const colorImages = formData.colors.find(c => c.name === activeColorTab)?.images || [];
-                        return colorImages.length > 0 ? (
-                          colorImages.map((preview, idx) => (
-                            <div key={idx} className="relative w-20 h-20 border border-blue-200">
-                              <img src={preview} alt={`${activeColorTab} ${idx}`} className="w-full h-full object-cover" />
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  removeImage(idx, activeColorTab);
-                                }}
-                                className="absolute -top-2 -right-2 bg-red-600 text-white rounded-full p-1 hover:bg-black transition-colors"
-                              >
-                                <Trash2 size={12} />
-                              </button>
-                            </div>
-                          ))
-                        ) : (
-                          <div className="flex flex-col items-center">
-                            <Upload size={20} className="group-hover:text-blue-600 transition-colors" />
-                            <span className="text-[9px] font-black uppercase mt-2 tracking-widest">{activeColorTab} GÖRSELLERİNİ YÜKLE</span>
-                          </div>
-                        );
-                      })()
-                    ) : (
-                      imagePreviews.length > 0 ? (
-                        imagePreviews.map((preview, idx) => (
-                          <div key={idx} className="relative w-20 h-20 border border-black/5">
-                            <img src={preview} alt={`Preview ${idx}`} className="w-full h-full object-cover" />
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                removeImage(idx);
-                              }}
-                              className="absolute -top-2 -right-2 bg-red-600 text-white rounded-full p-1 hover:bg-black transition-colors"
-                            >
-                              <Trash2 size={12} />
-                            </button>
-                          </div>
-                        ))
-                      ) : (
-                        <div className="flex flex-col items-center">
-                          <Upload size={20} className="group-hover:text-blue-600 transition-colors" />
-                          <span className="text-[9px] font-black uppercase mt-2 tracking-widest">GÖRSELLERİ YÜKLE</span>
-                        </div>
-                      )
-                    )}
-                    <input
-                      type="file"
-                      ref={fileInputRef}
-                      onChange={handleFileSelect}
-                      className="hidden"
-                      accept="image/*"
-                      multiple
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="block text-[10px] uppercase font-black text-gray-400 tracking-widest">3D Model (.GLB)</label>
-                  <div className="flex flex-col gap-3">
-                    <div
-                      onClick={() => modelInputRef.current?.click()}
-                      className={`relative border-2 border-dashed ${formData.modelUrl ? 'border-blue-600/50 bg-blue-50/5' : 'border-black/10 dark:border-white/10'} p-4 min-h-[100px] flex flex-col items-center justify-center text-gray-400 hover:border-blue-600 transition-all cursor-pointer group`}
-                    >
-                      {formData.modelUrl ? (
-                        <div className="flex flex-col items-center gap-2">
-                          <Box size={20} className="text-blue-600" />
-                          <span className="text-[9px] font-black uppercase tracking-widest text-blue-600">MODEL HAZIR</span>
-                          <div className="text-[8px] font-mono opacity-50 truncate max-w-[150px]">
-                            {formData.modelUrl.startsWith('data:') ? 'Lokal Dosya' : formData.modelUrl}
-                          </div>
-                        </div>
-                      ) : (
-                        <>
-                          <Box size={20} className="group-hover:text-blue-600 transition-colors" />
-                          <span className="text-[9px] font-black uppercase mt-2 tracking-widest">MODEL YÜKLE</span>
-                        </>
-                      )}
-                      <input
-                        type="file"
-                        ref={modelInputRef}
-                        onChange={handleModelSelect}
-                        className="hidden"
-                        accept=".glb,.gltf"
-                      />
-                    </div>
-                    <input
-                      type="text"
-                      value={formData.modelUrl.startsWith('data:') ? '' : formData.modelUrl}
-                      onChange={e => setFormData({ ...formData, modelUrl: e.target.value })}
-                      className="w-full border-b border-black/10 dark:border-white/10 bg-transparent py-2 focus:border-blue-600 outline-none transition-colors font-bold text-[8px] uppercase tracking-widest placeholder:text-gray-300"
-                      placeholder="VEYA MODEL URL'Sİ YAPIŞTIRIN"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="block text-[10px] uppercase font-black text-gray-400 tracking-widest">Video URL (Opsiyonel)</label>
-                  <input
-                    type="text"
-                    value={formData.videoUrl}
-                    onChange={e => setFormData({ ...formData, videoUrl: e.target.value })}
-                    className="w-full border-b border-black/10 dark:border-white/10 bg-transparent py-2 focus:border-blue-600 outline-none transition-colors font-bold text-[10px] uppercase tracking-widest placeholder:text-gray-300"
-                    placeholder="ÜRÜN VİDEOSU URL'Sİ (MP4, WEBM)"
-                  />
-                  <p className="text-[8px] text-gray-400 uppercase tracking-widest">
-                    * Video, ürün detay sayfasında gösterilecektir
-                  </p>
                 </div>
               </div>
             </div>
 
-            <div className="relative space-y-2">
-              <label className="block text-[10px] uppercase font-black text-gray-400 tracking-widest">Hikaye & Detay</label>
+            {/* Description / Story */}
+            <div className="space-y-2">
+              <label className="block text-[10px] uppercase font-black text-gray-400 tracking-[0.3em]">Hikaye & Ürün Tanıtımı</label>
               <textarea
                 required
                 value={formData.description}
                 onChange={e => setFormData({ ...formData, description: e.target.value })}
-                className="w-full border border-black/10 dark:border-white/10 p-6 h-40 outline-none focus:border-blue-600 bg-transparent transition-colors font-light text-sm leading-relaxed"
-                placeholder="Ürünün ruhunu anlatın..."
+                className="w-full border border-black/10 p-8 h-56 outline-none focus:border-blue-600 bg-transparent transition-colors font-light text-sm leading-relaxed"
               />
             </div>
 
-            <div className="flex justify-end gap-6 pt-4">
+            <div className="flex justify-end gap-6 pt-8 border-t border-black/5">
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="bg-blue-600 text-white px-12 py-4 text-[10px] uppercase tracking-[0.3em] font-black hover:bg-black dark:hover:bg-white dark:hover:text-black transition-all shadow-xl shadow-blue-600/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                className="bg-blue-600 text-white px-16 py-5 text-[10px] font-black uppercase tracking-[0.4em] shadow-2xl hover:bg-black transition-all flex items-center gap-4 group"
               >
-                {isSubmitting ? <Loader2 className="animate-spin" size={14} /> : null}
-                {isSubmitting ? 'Güncelleniyor...' : 'Değişiklikleri Kaydet'}
+                {isSubmitting ? <Loader2 className="animate-spin" size={16} /> : null}
+                {isSubmitting ? 'GÜNCELLENİYOR...' : 'DEĞİŞİKLİKLERİ KAYDET'}
               </button>
             </div>
           </form>

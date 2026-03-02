@@ -22,7 +22,7 @@ const Home: React.FC<HomeProps> = ({ products, onSelectProduct }) => {
       <div className="px-4 md:px-4 pt-4 pb-4 md:pb-6">
         <div
           onClick={() => document.getElementById('catalog-section')?.scrollIntoView({ behavior: 'smooth' })}
-          className="relative flex flex-col justify-end overflow-hidden min-h-[360px] md:min-h-[480px] group cursor-pointer transition-all duration-1000"
+          className="relative flex flex-col justify-end overflow-hidden min-h-[490px] md:min-h-[610px] group cursor-pointer transition-all duration-1000"
         >
           <div
             className="absolute inset-0 bg-cover bg-center transition-all duration-1000 ease-in-out grayscale group-hover:grayscale-0"
@@ -92,7 +92,16 @@ const Home: React.FC<HomeProps> = ({ products, onSelectProduct }) => {
                   <h4 className="text-black dark:text-white text-base md:text-lg font-black leading-tight uppercase tracking-tight group-hover:text-orange-600 transition-colors">
                     {product.name}
                   </h4>
-                  <p className="text-orange-600 font-black text-sm md:text-base italic tracking-tighter">₺{product.price.toLocaleString()}</p>
+                  <div className="text-right">
+                    {product.discountPrice ? (
+                      <div className="flex flex-col items-end">
+                        <span className="text-[10px] text-gray-400 line-through font-bold">₺{product.price.toLocaleString()}</span>
+                        <p className="text-orange-600 font-black text-sm md:text-base italic tracking-tighter">₺{product.discountPrice.toLocaleString()}</p>
+                      </div>
+                    ) : (
+                      <p className="text-orange-600 font-black text-sm md:text-base italic tracking-tighter">₺{product.price.toLocaleString()}</p>
+                    )}
+                  </div>
                 </div>
                 <div className="flex items-center justify-between border-t border-black/5 dark:border-white/5 pt-1.5 md:pt-2">
                   <p className="text-gray-400 text-[9px] md:text-[10px] font-bold uppercase tracking-[0.2em]">{product.category}</p>

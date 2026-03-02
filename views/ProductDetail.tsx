@@ -1,13 +1,13 @@
 
 import React from 'react';
 import { Product, ProductColor } from '../types';
-import { ChevronLeft, ShoppingBag, Share2, Ruler, Star, ShieldCheck, Truck, Link2, Check } from 'lucide-react';
+import { ChevronLeft, ShoppingBag, Share2, Ruler, Star, ShieldCheck, Truck, Link2, Check, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
 import { slugify } from '../utils/slug';
 
 interface ProductDetailProps {
   product: Product;
   onBack: () => void;
-  onAddToCart: (product: Product) => void;
+  onAddToCart: (product: Product, color?: ProductColor) => void;
 }
 
 const ProductDetail: React.FC<ProductDetailProps> = ({ product, onBack, onAddToCart }) => {
@@ -15,6 +15,101 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ product, onBack, onAddToC
   const [activeImage, setActiveImage] = React.useState(product.images?.[0] || '');
   const [selectedColor, setSelectedColor] = React.useState<ProductColor | null>(null);
   const [linkCopied, setLinkCopied] = React.useState(false);
+  const [zoomLevel, setZoomLevel] = React.useState(1);
+  const [panPosition, setPanPosition] = React.useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = React.useState(false);
+  const [dragStart, setDragStart] = React.useState({ x: 0, y: 0 });
+  const [lastPinchDist, setLastPinchDist] = React.useState(0);
+  const imageContainerRef = React.useRef<HTMLDivElement>(null);
+
+  // Reset zoom when image changes
+  React.useEffect(() => {
+    setZoomLevel(1);
+    setPanPosition({ x: 0, y: 0 });
+  }, [activeImage]);
+
+  const handleWheel = (e: React.WheelEvent) => {
+    e.preventDefault();
+    const delta = e.deltaY > 0 ? -0.15 : 0.15;
+    setZoomLevel(prev => {
+      const next = Math.max(1, Math.min(5, prev + delta));
+      if (next <= 1) setPanPosition({ x: 0, y: 0 });
+      return next;
+    });
+  };
+
+  const handleDoubleClick = () => {
+    if (zoomLevel > 1) {
+      setZoomLevel(1);
+      setPanPosition({ x: 0, y: 0 });
+    } else {
+      setZoomLevel(2.5);
+    }
+  };
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    if (zoomLevel <= 1) return;
+    setIsDragging(true);
+    setDragStart({ x: e.clientX - panPosition.x, y: e.clientY - panPosition.y });
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!isDragging || zoomLevel <= 1) return;
+    const containerRect = imageContainerRef.current?.getBoundingClientRect();
+    if (!containerRect) return;
+    const maxPan = (containerRect.width * (zoomLevel - 1)) / 2;
+    const newX = Math.max(-maxPan, Math.min(maxPan, e.clientX - dragStart.x));
+    const newY = Math.max(-maxPan, Math.min(maxPan, e.clientY - dragStart.y));
+    setPanPosition({ x: newX, y: newY });
+  };
+
+  const handlePointerUp = () => {
+    setIsDragging(false);
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length === 2) {
+      const dist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      setLastPinchDist(dist);
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (e.touches.length === 2) {
+      e.preventDefault();
+      const dist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      if (lastPinchDist > 0) {
+        const scale = dist / lastPinchDist;
+        setZoomLevel(prev => {
+          const next = Math.max(1, Math.min(5, prev * scale));
+          if (next <= 1) setPanPosition({ x: 0, y: 0 });
+          return next;
+        });
+      }
+      setLastPinchDist(dist);
+    }
+  };
+
+  const handleTouchEnd = () => {
+    setLastPinchDist(0);
+  };
+
+  const zoomIn = () => setZoomLevel(prev => Math.min(5, prev + 0.5));
+  const zoomOut = () => {
+    setZoomLevel(prev => {
+      const next = Math.max(1, prev - 0.5);
+      if (next <= 1) setPanPosition({ x: 0, y: 0 });
+      return next;
+    });
+  };
+  const resetZoom = () => { setZoomLevel(1); setPanPosition({ x: 0, y: 0 }); };
 
   // URL'den renk parametresini oku (ilk yükleme)
   React.useEffect(() => {
@@ -51,6 +146,21 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ product, onBack, onAddToC
       url
     );
   };
+
+  const rating = React.useMemo(() => {
+    // Generate a consistent pseudo-random rating between 4.6 and 4.9 based on product name length and ID
+    const seed = (product.id.length + product.name.length) % 4;
+    return [4.7, 4.8, 4.6, 4.9][seed];
+  }, [product.id, product.name]);
+
+  const allImages = React.useMemo(() => {
+    const general = product.images || [];
+    const colorImages = (product.colors || []).flatMap(c => (c.images || []).map(img => ({ url: img, color: c })));
+    return [
+      ...general.map(url => ({ url, color: null })),
+      ...colorImages
+    ];
+  }, [product.images, product.colors]);
 
   const handleShare = async () => {
     const shareUrl = getProductUrl(selectedColor);
@@ -90,9 +200,17 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ product, onBack, onAddToC
   };
 
   const handleAddToCart = () => {
-    onAddToCart(product);
+    onAddToCart(product, selectedColor || undefined);
     setAdded(true);
     setTimeout(() => setAdded(false), 2000);
+  };
+
+  const onThumbnailClick = (imgObj: { url: string, color: ProductColor | null }) => {
+    setActiveImage(imgObj.url);
+    if (imgObj.color) {
+      setSelectedColor(imgObj.color);
+      updateUrlForColor(imgObj.color);
+    }
   };
 
   return (
@@ -144,7 +262,20 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ product, onBack, onAddToC
           {/* Image Gallery Section */}
           <div className="flex flex-col gap-6 md:gap-8">
             {/* Main Image/Video Display */}
-            <div className="relative bg-gray-50 dark:bg-surface-dark border border-black/5 dark:border-white/5 overflow-hidden aspect-square">
+            <div 
+              ref={imageContainerRef}
+              className="relative bg-gray-50 dark:bg-surface-dark border border-black/5 dark:border-white/5 overflow-hidden aspect-square select-none"
+              onWheel={handleWheel}
+              onDoubleClick={handleDoubleClick}
+              onPointerDown={handlePointerDown}
+              onPointerMove={handlePointerMove}
+              onPointerUp={handlePointerUp}
+              onPointerLeave={handlePointerUp}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+              style={{ cursor: zoomLevel > 1 ? (isDragging ? 'grabbing' : 'grab') : 'zoom-in', touchAction: 'none' }}
+            >
               {activeImage === 'VIDEO' && product.videoUrl ? (
                 <video
                   src={product.videoUrl}
@@ -157,28 +288,58 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ product, onBack, onAddToC
                 <img
                   src={activeImage}
                   alt={product.name}
-                  loading="lazy"
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover transition-transform duration-150 ease-out"
+                  style={{
+                    transform: `scale(${zoomLevel}) translate(${panPosition.x / zoomLevel}px, ${panPosition.y / zoomLevel}px)`,
+                    imageRendering: 'auto',
+                    willChange: 'transform'
+                  }}
+                  draggable={false}
                 />
+              )}
+
+              {/* Zoom Controls Overlay */}
+              {activeImage !== 'VIDEO' && (
+                <div className="absolute bottom-3 right-3 flex items-center gap-1 bg-black/60 backdrop-blur-md rounded-full px-2 py-1 z-10">
+                  <button onClick={(e) => { e.stopPropagation(); zoomOut(); }} className="text-white/80 hover:text-white p-1.5 transition-colors" title="Uzaklaştır">
+                    <ZoomOut size={16} />
+                  </button>
+                  <span className="text-white/80 text-[9px] font-black min-w-[32px] text-center">
+                    {Math.round(zoomLevel * 100)}%
+                  </span>
+                  <button onClick={(e) => { e.stopPropagation(); zoomIn(); }} className="text-white/80 hover:text-white p-1.5 transition-colors" title="Yakınlaştır">
+                    <ZoomIn size={16} />
+                  </button>
+                  {zoomLevel > 1 && (
+                    <button onClick={(e) => { e.stopPropagation(); resetZoom(); }} className="text-white/80 hover:text-white p-1.5 transition-colors border-l border-white/20 ml-1" title="Sıfırla">
+                      <Maximize2 size={14} />
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* Zoom hint */}
+              {zoomLevel <= 1 && activeImage !== 'VIDEO' && (
+                <div className="absolute top-3 left-3 bg-black/50 backdrop-blur-sm text-white/70 text-[8px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-full pointer-events-none">
+                  Yakınlaştırmak için çift tıklayın
+                </div>
               )}
             </div>
 
             {/* Product Thumbnails */}
             <div className="grid grid-cols-4 gap-3 md:gap-4 border-t border-black/5 pt-6 md:pt-8">
-              {(() => {
-                const displayImages = selectedColor?.images && selectedColor.images.length > 0
-                  ? selectedColor.images
-                  : product.images || [];
-                return displayImages.map((img, i) => (
-                  <div
-                    key={i}
-                    onClick={() => setActiveImage(img)}
-                    className={`aspect-square bg-gray-50 dark:bg-surface-dark border transition-colors p-1 cursor-pointer ${activeImage === img ? 'border-orange-600' : 'border-black/5 dark:border-white/5'}`}
-                  >
-                    <img src={img} loading="lazy" className="w-full h-full object-cover grayscale hover:grayscale-0 transition-all" alt={`${product.name} ${i + 1}`} />
-                  </div>
-                ));
-              })()}
+              {(selectedColor?.images && selectedColor.images.length > 0 
+                ? selectedColor.images.map(url => ({ url, color: selectedColor }))
+                : allImages
+              ).map((imgObj, i) => (
+                <div
+                  key={i}
+                  onClick={() => onThumbnailClick(imgObj)}
+                  className={`aspect-square bg-gray-50 dark:bg-surface-dark border transition-colors p-1 cursor-pointer ${activeImage === imgObj.url ? 'border-orange-600' : 'border-black/5 dark:border-white/5'}`}
+                >
+                  <img src={imgObj.url} loading="lazy" className="w-full h-full object-cover grayscale hover:grayscale-0 transition-all" alt={`${product.name} ${i + 1}`} />
+                </div>
+              ))}
               {product.videoUrl && (
                 <div
                   onClick={() => setActiveImage('VIDEO')}
@@ -204,16 +365,35 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ product, onBack, onAddToC
                   <h1 className="text-3xl md:text-5xl font-black uppercase tracking-tighter leading-none">{product.name}</h1>
                   <div className="flex items-center gap-2 mt-3">
                     <div className="flex">
-                      {[...Array(5)].map((_, i) => (
-                        <Star key={i} size={14} className="md:w-4 md:h-4 fill-orange-600 text-orange-600" />
-                      ))}
+                      {[...Array(5)].map((_, i) => {
+                        const starValue = i + 1;
+                        const fillWidth = Math.max(0, Math.min(100, (rating - i) * 100));
+                        return (
+                          <div key={i} className="relative">
+                            <Star size={14} className="md:w-4 md:h-4 text-orange-600" />
+                            <div 
+                              className="absolute inset-0 overflow-hidden" 
+                              style={{ width: `${fillWidth}%` }}
+                            >
+                              <Star size={14} className="md:w-4 md:h-4 fill-orange-600 text-orange-600" />
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
-                    <span className="text-[9px] md:text-[10px] text-gray-400 font-bold uppercase tracking-widest">(5.0/5 - 128 Analiz)</span>
+                    <span className="text-[9px] md:text-[10px] text-gray-400 font-bold uppercase tracking-widest">({rating}/5 - 128 Yorum)</span>
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-3xl md:text-4xl font-black text-orange-600 italic">₺{product.price.toLocaleString()}</p>
-                  <span className="text-[9px] md:text-[10px] text-green-600 font-black uppercase tracking-widest">● Stokta Mevcut</span>
+                  {product.discountPrice ? (
+                    <div className="flex flex-col items-end">
+                      <span className="text-lg md:text-xl text-gray-400 line-through font-black italic opacity-50">₺{product.price.toLocaleString()}</span>
+                      <p className="text-3xl md:text-4xl font-black text-orange-600 italic mt-[-4px]">₺{product.discountPrice.toLocaleString()}</p>
+                    </div>
+                  ) : (
+                    <p className="text-3xl md:text-4xl font-black text-orange-600 italic">₺{product.price.toLocaleString()}</p>
+                  )}
+                  <span className="text-[9px] md:text-[10px] text-green-600 font-black uppercase tracking-widest block mt-2">● Stokta Mevcut</span>
                 </div>
               </div>
 

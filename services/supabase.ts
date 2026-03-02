@@ -27,7 +27,8 @@ export const SupabaseService = {
             modelUrl: p.modelurl,
             videoUrl: p.videourl,
             colors: p.colors || [],
-            fabricProperties: p.fabric_properties || undefined
+            fabricProperties: p.fabric_properties || undefined,
+            discountPrice: p.discount_price || undefined
         }));
     },
 
@@ -45,7 +46,8 @@ export const SupabaseService = {
             modelurl: product.modelUrl,
             dimensions: product.dimensions,
             colors: product.colors || [],
-            fabric_properties: product.fabricProperties || null
+            fabric_properties: product.fabricProperties || null,
+            discount_price: product.discountPrice || null
         };
 
         // Only add videourl if it's provided
@@ -117,7 +119,8 @@ export const SupabaseService = {
             modelurl: product.modelUrl,
             dimensions: product.dimensions,
             colors: product.colors || [],
-            fabric_properties: product.fabricProperties || null
+            fabric_properties: product.fabricProperties || null,
+            discount_price: product.discountPrice || null
         };
 
         // Only add videourl if it's provided
@@ -197,7 +200,9 @@ export const SupabaseService = {
             order_id: orderData.id,
             product_id: item.product.id,
             quantity: item.quantity,
-            price: item.product.price
+            price: item.product.price,
+            selected_color_name: item.selectedColor?.name || null,
+            selected_color_hex: item.selectedColor?.hex || null
         }));
 
         const { error: itemsError } = await supabase

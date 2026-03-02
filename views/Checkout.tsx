@@ -233,12 +233,15 @@ const Checkout: React.FC<CheckoutProps> = ({ cart, onNavigate, onClearCart }) =>
                             <h3 className="text-[12px] font-black uppercase tracking-[0.4em] text-black dark:text-white">Siparişiniz</h3>
                             <div className="space-y-8 max-h-[500px] overflow-y-auto no-scrollbar pr-4">
                                 {cart.map((item) => (
-                                    <div key={item.product.id} className="flex gap-6">
+                                    <div key={`${item.product.id}-${item.selectedColor?.name || 'default'}`} className="flex gap-6">
                                         <div className="size-20 bg-gray-50 dark:bg-surface-dark p-1 border border-black/5 dark:border-white/5 shrink-0">
-                                            <img src={item.product.images?.[0] || ''} className="w-full h-full object-cover grayscale" />
+                                            <img src={item.selectedColor?.images?.[0] || item.product.images?.[0] || ''} className="w-full h-full object-cover grayscale" alt={item.product.name} />
                                         </div>
                                         <div className="flex-grow">
                                             <p className="text-[11px] font-black text-black dark:text-white uppercase tracking-tight">{item.product.name}</p>
+                                            {item.selectedColor && (
+                                                <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest mt-1">RENK: {item.selectedColor.name}</p>
+                                            )}
                                             <p className="text-[9px] text-gray-400 font-bold uppercase tracking-widest mt-1">ADET: {item.quantity}</p>
                                             <p className="text-xs font-black text-orange-600 mt-2">₺{(item.product.price * item.quantity).toLocaleString()}</p>
                                         </div>

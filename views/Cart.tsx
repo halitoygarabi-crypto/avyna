@@ -5,14 +5,17 @@ import { Trash2, Plus, Minus, ArrowRight, ChevronLeft, ShoppingBag } from 'lucid
 
 interface CartProps {
     cart: CartItem[];
-    onUpdateQuantity: (productId: string, delta: number) => void;
-    onRemoveItem: (productId: string) => void;
+    onUpdateQuantity: (productId: string, delta: number, colorName?: string) => void;
+    onRemoveItem: (productId: string, colorName?: string) => void;
     onNavigate: (view: ViewMode) => void;
     onBack: () => void;
 }
 
 const Cart: React.FC<CartProps> = ({ cart, onUpdateQuantity, onRemoveItem, onNavigate, onBack }) => {
-    const subtotal = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
+    const subtotal = cart.reduce((sum, item) => {
+        const actualPrice = item.product.discountPrice || item.product.price;
+        return sum + actualPrice * item.quantity;
+    }, 0);
     const total = subtotal; // No shipping fee
 
     if (cart.length === 0) {
@@ -52,10 +55,10 @@ const Cart: React.FC<CartProps> = ({ cart, onUpdateQuantity, onRemoveItem, onNav
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-16">
                     <div className="lg:col-span-2 space-y-12">
                         {cart.map((item) => (
-                            <div key={item.product.id} className="flex gap-8 group">
+                            <div key={`${item.product.id}-${item.selectedColor?.name || 'default'}`} className="flex gap-8 group">
                                 <div className="w-40 aspect-[4/5] bg-gray-50 dark:bg-surface-dark relative overflow-hidden p-1 border border-black/5 dark:border-white/5">
                                     <img
-                                        src={item.product.images?.[0] || ''}
+                                        src={item.selectedColor?.images?.[0] || item.product.images?.[0] || ''}
                                         alt={item.product.name}
                                         className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-700"
                                     />
@@ -66,9 +69,15 @@ const Cart: React.FC<CartProps> = ({ cart, onUpdateQuantity, onRemoveItem, onNav
                                         <div>
                                             <p className="text-orange-600 text-[9px] font-black uppercase tracking-[0.3em] mb-1">{item.product.category}</p>
                                             <h3 className="text-2xl font-black text-black dark:text-white uppercase tracking-tight italic">{item.product.name}</h3>
+                                            {item.selectedColor && (
+                                                <div className="flex items-center gap-2 mt-2">
+                                                    <div className="size-3 rounded-full border border-black/10" style={{ backgroundColor: item.selectedColor.hex }} />
+                                                    <span className="text-[10px] font-black uppercase tracking-widest text-gray-500">{item.selectedColor.name}</span>
+                                                </div>
+                                            )}
                                         </div>
                                         <button
-                                            onClick={() => onRemoveItem(item.product.id)}
+                                            onClick={() => onRemoveItem(item.product.id, item.selectedColor?.name)}
                                             className="text-gray-300 hover:text-red-500 transition-colors p-2"
                                         >
                                             <Trash2 size={18} />
@@ -78,22 +87,29 @@ const Cart: React.FC<CartProps> = ({ cart, onUpdateQuantity, onRemoveItem, onNav
                                     <div className="flex justify-between items-end">
                                         <div className="flex items-center bg-gray-50 dark:bg-surface-dark border border-black/5 dark:border-white/5">
                                             <button
-                                                onClick={() => onUpdateQuantity(item.product.id, -1)}
+                                                onClick={() => onUpdateQuantity(item.product.id, -1, item.selectedColor?.name)}
                                                 className="p-3 hover:text-orange-600 transition-colors"
                                             >
                                                 <Minus size={14} />
                                             </button>
                                             <span className="w-12 text-center text-xs font-black">{item.quantity}</span>
                                             <button
-                                                onClick={() => onUpdateQuantity(item.product.id, 1)}
+                                                onClick={() => onUpdateQuantity(item.product.id, 1, item.selectedColor?.name)}
                                                 className="p-3 hover:text-orange-600 transition-colors"
                                             >
                                                 <Plus size={14} />
                                             </button>
                                         </div>
                                         <div className="text-right">
-                                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1">Birim Fiyat: ₺{item.product.price.toLocaleString()}</p>
-                                            <p className="text-xl font-black text-black dark:text-white italic">₺{(item.product.price * item.quantity).toLocaleString()}</p>
+                                            {item.product.discountPrice ? (
+                                                <div className="mb-1">
+                                                    <span className="text-[9px] text-gray-400 line-through mr-2">₺{item.product.price.toLocaleString()}</span>
+                                                    <span className="text-[10px] text-orange-600 font-black">₺{item.product.discountPrice.toLocaleString()}</span>
+                                                </div>
+                                            ) : (
+                                                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1">₺{item.product.price.toLocaleString()}</p>
+                                            )}
+                                            <p className="text-xl font-black text-black dark:text-white italic">₺{((item.product.discountPrice || item.product.price) * item.quantity).toLocaleString()}</p>
                                         </div>
                                     </div>
                                 </div>

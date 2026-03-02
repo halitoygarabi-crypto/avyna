@@ -12,7 +12,7 @@ import Checkout from './views/Checkout';
 import TrialRoom from './views/TrialRoom';
 import Orders from './views/Orders';
 import InfoPages from './views/InfoPages';
-import { Product, ViewMode, CartItem } from './types';
+import { Product, ViewMode, CartItem, ProductColor } from './types';
 import { INITIAL_PRODUCTS } from './services/mockData';
 import { ApiService } from './services/api';
 import WhatsAppButton from './components/WhatsAppButton';
@@ -188,26 +188,33 @@ const App: React.FC = () => {
   };
 
 
-  const addToCart = (product: Product) => {
+  const addToCart = (product: Product, selectedColor?: ProductColor) => {
     setCart(prev => {
-      const existing = prev.find(item => item.product.id === product.id);
+      const existing = prev.find(item => 
+        item.product.id === product.id && 
+        (selectedColor ? item.selectedColor?.name === selectedColor.name : !item.selectedColor)
+      );
       let updated;
       if (existing) {
         updated = prev.map(item =>
-          item.product.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
+          (item.product.id === product.id && 
+           (selectedColor ? item.selectedColor?.name === selectedColor.name : !item.selectedColor))
+            ? { ...item, quantity: item.quantity + 1 } 
+            : item
         );
       } else {
-        updated = [...prev, { product, quantity: 1 }];
+        updated = [...prev, { product, quantity: 1, selectedColor }];
       }
       localStorage.setItem('avyna_cart', JSON.stringify(updated));
       return updated;
     });
   };
 
-  const updateQuantity = (productId: string, delta: number) => {
+  const updateQuantity = (productId: string, delta: number, colorName?: string) => {
     setCart(prev => {
       const updated = prev.map(item => {
-        if (item.product.id === productId) {
+        if (item.product.id === productId && 
+            (colorName ? item.selectedColor?.name === colorName : !item.selectedColor)) {
           const newQty = Math.max(1, item.quantity + delta);
           return { ...item, quantity: newQty };
         }
@@ -218,9 +225,12 @@ const App: React.FC = () => {
     });
   };
 
-  const removeItem = (productId: string) => {
+  const removeItem = (productId: string, colorName?: string) => {
     setCart(prev => {
-      const updated = prev.filter(item => item.product.id !== productId);
+      const updated = prev.filter(item => 
+        !(item.product.id === productId && 
+          (colorName ? item.selectedColor?.name === colorName : !item.selectedColor))
+      );
       localStorage.setItem('avyna_cart', JSON.stringify(updated));
       return updated;
     });

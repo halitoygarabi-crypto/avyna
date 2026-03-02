@@ -35,6 +35,8 @@ CREATE TABLE IF NOT EXISTS order_items (
   product_id TEXT,
   quantity INTEGER DEFAULT 1,
   price NUMERIC,
+  selected_color_name TEXT,
+  selected_color_hex TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 

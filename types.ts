@@ -30,6 +30,7 @@ export interface Product {
   features?: string[];
   colors?: ProductColor[];
   fabricProperties?: FabricProperties;
+  discountPrice?: number;
   stock: number;
 }
 
@@ -62,6 +63,7 @@ export enum ViewMode {
 export interface CartItem {
   product: Product;
   quantity: number;
+  selectedColor?: ProductColor;
 }
 
 export interface Order {
@@ -81,4 +83,6 @@ export interface OrderItem {
   product_id: string;
   quantity: number;
   price: number;
+  selected_color_name?: string;
+  selected_color_hex?: string;
 }
