@@ -184,9 +184,13 @@ const App: React.FC = () => {
   };
 
   const handleDeleteProduct = async (id: string) => {
+    if (!window.confirm("Bu ürünü tamamen silmek istediğinize emin misiniz?")) return;
+
     try {
+      console.log("Silme isteği başlatıldı:", id);
       await ApiService.deleteProduct(id);
-      setProducts(products.filter(p => p.id !== id));
+      setProducts(prev => prev.filter(p => p.id !== id));
+      alert("Ürün başarıyla silindi.");
     } catch (e: any) {
       console.error("Error deleting product:", e);
       alert("Ürün silinemedi: " + (e.message || "Bilinmeyen hata"));
