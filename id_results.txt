@@ -1,0 +1,9 @@
+--- ID CONSTRAINT CHECK ---
+Test 1: Inserting WITHOUT id column...
+Test 1 SUCCESS: Database has a default for "id".
+
+Test 2: Inserting WITH explicit id (UUID)...
+Test 2 SUCCESS: Explicit ID works.
+
+Test 3: Inserting with id: null...
+Test 3 FAILED (as expected?): null value in column "id" of relation "products" violates not-null constraint (23502)

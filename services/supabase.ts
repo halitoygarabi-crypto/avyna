@@ -36,19 +36,24 @@ export const SupabaseService = {
     async addProduct(product: any) {
         // Explicitly map only the columns that exist in the Supabase schema
         const dbProduct: any = {
-            id: product.id || undefined,
             name: product.name,
-            price: product.price,
+            price: Number(product.price),
             category: product.category,
             description: product.description,
-            stock: product.stock,
+            stock: Number(product.stock),
             images: product.images || [],
             modelurl: product.modelUrl,
             dimensions: product.dimensions,
             colors: product.colors || [],
             fabric_properties: product.fabricProperties || null,
-            discount_price: product.discountPrice || null
+            discount_price: product.discountPrice ? Number(product.discountPrice) : null
         };
+
+        // Only add id if it's provided (for migration or manual id)
+        // Otherwise, let Supabase generate it
+        if (product.id) {
+            dbProduct.id = product.id;
+        }
 
         // Only add videourl if it's provided
         if (product.videoUrl) {
@@ -128,17 +133,18 @@ export const SupabaseService = {
         // Explicitly map only the columns that exist in the Supabase schema
         const dbProduct: any = {
             name: product.name,
-            price: product.price,
+            price: Number(product.price),
             category: product.category,
             description: product.description,
-            stock: product.stock,
+            stock: Number(product.stock),
             images: product.images || [],
             modelurl: product.modelUrl,
             dimensions: product.dimensions,
             colors: product.colors || [],
             fabric_properties: product.fabricProperties || null,
-            discount_price: product.discountPrice || null
+            discount_price: product.discountPrice ? Number(product.discountPrice) : null
         };
+
 
         // Only add videourl if it's provided
         if (product.videoUrl) {
@@ -197,19 +203,25 @@ export const SupabaseService = {
 
     // Orders
     async createOrder(order: any, items: any[]) {
+        const dbOrder: any = {
+            customer_name: order.customerName,
+            customer_email: order.customerEmail,
+            customer_phone: order.customerPhone,
+            address: order.address,
+            total_amount: order.total,
+            status: 'pending'
+        };
+
+        if (order.id) {
+            dbOrder.id = order.id;
+        }
+
         const { data: orderData, error: orderError } = await supabase
             .from('orders')
-            .insert([{
-                id: order.id, // Support custom order ID
-                customer_name: order.customerName,
-                customer_email: order.customerEmail,
-                customer_phone: order.customerPhone,
-                address: order.address,
-                total_amount: order.total,
-                status: 'pending'
-            }])
+            .insert([dbOrder])
             .select()
             .single();
+
 
         if (orderError) throw orderError;
 
