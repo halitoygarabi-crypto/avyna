@@ -72,7 +72,7 @@ const Home: React.FC<HomeProps> = ({ products, onSelectProduct, favoriteIds = []
               <div className="card-3d relative aspect-[4/5] w-full p-1 bg-orange-600 shadow-sm transition-all overflow-visible">
                 <div className="relative h-full w-full bg-white dark:bg-black overflow-hidden border-2 md:border-4 border-white dark:border-black">
                   <img
-                    src={product.images[0]}
+                    src={product.images && product.images.length > 0 ? product.images[0] : 'https://placehold.co/800x1000?text=Gorsel+Yok'}
                     alt={product.name}
                     loading="lazy"
                     className="absolute inset-0 w-full h-full object-cover grayscale-img"

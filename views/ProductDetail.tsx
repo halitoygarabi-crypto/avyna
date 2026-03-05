@@ -15,7 +15,13 @@ interface ProductDetailProps {
 
 const ProductDetail: React.FC<ProductDetailProps> = ({ product, onBack, onAddToCart, onNavigate, isFavorite = false, onToggleFavorite }) => {
   const [added, setAdded] = React.useState(false);
-  const [activeImage, setActiveImage] = React.useState(product.images?.[0] || '');
+  const allAvailableImages = React.useMemo(() => {
+    const general = product.images || [];
+    const colorImages = (product.colors || []).flatMap(c => c.images || []);
+    return [...general, ...colorImages];
+  }, [product]);
+
+  const [activeImage, setActiveImage] = React.useState(allAvailableImages.length > 0 ? allAvailableImages[0] : '');
   const [selectedColor, setSelectedColor] = React.useState<ProductColor | null>(null);
   const [linkCopied, setLinkCopied] = React.useState(false);
   const [zoomLevel, setZoomLevel] = React.useState(1);
@@ -314,7 +320,7 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ product, onBack, onAddToC
                 />
               ) : (
                 <img
-                  src={activeImage}
+                  src={activeImage || 'https://placehold.co/800x1000?text=Gorsel+Yok'}
                   alt={product.name}
                   className="w-full h-full object-cover transition-transform duration-150 ease-out"
                   style={{
@@ -356,7 +362,7 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ product, onBack, onAddToC
 
             {/* Product Thumbnails */}
             <div className="grid grid-cols-4 gap-3 md:gap-4 border-t border-black/5 pt-6 md:pt-8">
-              {(selectedColor?.images && selectedColor.images.length > 0 
+              {(selectedColor?.images && selectedColor.images.length > 0
                 ? selectedColor.images.map(url => ({ url, color: selectedColor }))
                 : allImages
               ).map((imgObj, i) => (
@@ -365,7 +371,7 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ product, onBack, onAddToC
                   onClick={() => onThumbnailClick(imgObj)}
                   className={`aspect-square bg-gray-50 dark:bg-surface-dark border transition-colors p-1 cursor-pointer ${activeImage === imgObj.url ? 'border-orange-600' : 'border-black/5 dark:border-white/5'}`}
                 >
-                  <img src={imgObj.url} loading="lazy" className="w-full h-full object-cover grayscale hover:grayscale-0 transition-all" alt={`${product.name} ${i + 1}`} />
+                  <img src={imgObj.url || 'https://placehold.co/800x1000?text=Gorsel+Yok'} loading="lazy" className="w-full h-full object-cover grayscale hover:grayscale-0 transition-all" alt={`${product.name} ${i + 1}`} />
                 </div>
               ))}
               {product.videoUrl && (
