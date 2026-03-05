@@ -1,7 +1,0 @@
-{
-  "name": "Ver3Avyna Furniture - Premium 3D & AI Experience",
-  "description": "A luxury furniture store featuring AI-powered interior design consultations and 3D AR product visualization.",
-  "requestFramePermissions": [
-    "camera"
-  ]
-}

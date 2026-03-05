@@ -101,7 +101,6 @@ export const SupabaseService = {
     },
 
     async deleteProduct(id: string) {
-        console.log('[Supabase] Deleting product:', id);
         const { error, count } = await supabase
             .from('products')
             .delete({ count: 'exact' })
@@ -112,7 +111,7 @@ export const SupabaseService = {
             throw new Error(`Ürün silinemedi: ${error.message}`);
         }
 
-        console.log('[Supabase] Delete result - rows affected:', count);
+
         
         // Verify the product is actually gone
         const { data: checkData } = await supabase
@@ -126,7 +125,7 @@ export const SupabaseService = {
             throw new Error('Ürün silinemedi. RLS politikası izin vermiyor olabilir. Supabase Dashboard\'dan kontrol edin.');
         }
 
-        console.log('[Supabase] Product successfully deleted:', id);
+
     },
 
     async updateProduct(product: any) {

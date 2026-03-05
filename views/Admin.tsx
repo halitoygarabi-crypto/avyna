@@ -217,7 +217,6 @@ const Admin: React.FC<AdminProps> = ({ products, onAddProduct, onUpdateProduct, 
         discountPrice: formData.discountPrice ? Number(formData.discountPrice) : undefined
       };
 
-      console.log("Submitting new product...", newProduct.name);
       await onAddProduct(newProduct as Product);
 
       setFormData({ name: '', price: '', category: 'Oturma Grubu', description: '', stock: '5', images: [], modelUrl: '', videoUrl: '', colors: [], fabricType: '', fabricComposition: '', fabricWarranty: '', fabricCleaning: '', fabricOrigin: '', dimWidth: '', dimHeight: '', dimDepth: '', discountPrice: '' });
@@ -439,7 +438,7 @@ const Admin: React.FC<AdminProps> = ({ products, onAddProduct, onUpdateProduct, 
                     setGeneratedModelUrl(null);
 
                     const result = await ApiService.generate3DModel(n8nImageUrl);
-                    console.log("3D Generation Result:", result);
+
 
                     // Robust parsing of the result
                     let foundUrl = null;

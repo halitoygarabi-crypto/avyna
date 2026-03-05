@@ -187,7 +187,6 @@ const App: React.FC = () => {
     if (!window.confirm("Bu ürünü tamamen silmek istediğinize emin misiniz?")) return;
 
     try {
-      console.log("Silme isteği başlatıldı:", id);
       await ApiService.deleteProduct(id);
       setProducts(prev => prev.filter(p => p.id !== id));
       alert("Ürün başarıyla silindi.");
