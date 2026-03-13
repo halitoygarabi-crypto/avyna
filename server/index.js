@@ -1,7 +1,6 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import Database from 'better-sqlite3';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import axios from 'axios';
@@ -30,34 +29,8 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(express.static(path.join(__dirname, '../dist')));
 
 // Database Initialization
-const db = new Database(path.join(__dirname, 'database.db'));
-
-// Create tables
-db.exec(`
-  CREATE TABLE IF NOT EXISTS products (
-    id TEXT PRIMARY KEY,
-    name TEXT NOT NULL,
-    price REAL NOT NULL,
-    category TEXT,
-    description TEXT,
-    stock INTEGER DEFAULT 0,
-    imageUrl TEXT,
-    modelUrl TEXT,
-    dimensions TEXT
-  );
-
-  CREATE TABLE IF NOT EXISTS orders (
-    id TEXT PRIMARY KEY,
-    customerName TEXT,
-    customerEmail TEXT,
-    customerPhone TEXT,
-    address TEXT,
-    total REAL,
-    status TEXT DEFAULT 'pending',
-    items TEXT,
-    createdAt TEXT
-  );
-`);
+// SQLite has been removed to improve deployment speeds.
+// We are purely using Supabase now.
 
 // --- PRODUCT ROUTES ---
 
@@ -151,17 +124,7 @@ app.post('/api/products', async (req, res) => {
 
         console.log(`[Supabase] Insert success: ${name}`);
 
-        // 2. Mirror to Local SQLite (Backup/Cache)
-        try {
-            const stmt = db.prepare(`
-                INSERT INTO products (id, name, price, category, description, stock, imageUrl, modelUrl, dimensions)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            `);
-            stmt.run(productId, name, price, category, description, stock, JSON.stringify(images), modelUrl, JSON.stringify(dimensions));
-            console.log(`[SQLite] Mirror success: ${name}`);
-        } catch (sqliteErr) {
-            console.warn('[SQLite Warning] Mirror failed:', sqliteErr.message);
-        }
+        // No local SQLite mirroring anymore
 
         res.status(201).json({ success: true, ...supData });
     } catch (error) {
@@ -177,9 +140,7 @@ app.delete('/api/products/:id', async (req, res) => {
         const { error: supError } = await supabase.from('products').delete().eq('id', id);
         if (supError) throw supError;
 
-        // Delete from SQLite
-        const stmt = db.prepare('DELETE FROM products WHERE id = ?');
-        stmt.run(id);
+        // SQLite deletion removed
 
         res.json({ success: true });
     } catch (error) {
@@ -232,17 +193,7 @@ app.put('/api/products/:id', async (req, res) => {
         const supData = supDataArr && supDataArr.length > 0 ? supDataArr[0] : null;
         console.log(`[Supabase] Upsert success: ${name}`, supData ? 'Row returned' : 'No row returned');
         
-        // Also update SQLite mirror
-        try {
-            const stmt = db.prepare(`
-                UPDATE products 
-                SET name = ?, price = ?, category = ?, description = ?, stock = ?, imageUrl = ?, modelUrl = ?, dimensions = ?
-                WHERE id = ?
-            `);
-            stmt.run(name, price, category, description, stock, JSON.stringify(images), modelUrl, JSON.stringify(dimensions || {}), id);
-        } catch (sqliteErr) {
-            console.warn('[SQLite Warning] Mirror update failed:', sqliteErr.message);
-        }
+        // SQLite mirroring removed
 
         res.json({ success: true, ...(supData || dbProduct) });
     } catch (error) {
@@ -253,31 +204,53 @@ app.put('/api/products/:id', async (req, res) => {
 
 // --- ORDER ROUTES ---
 
-app.post('/api/orders', (req, res) => {
+app.post('/api/orders', async (req, res) => {
     const { customerName, customerEmail, customerPhone, address, total, items } = req.body;
     const id = 'ORD-' + Date.now();
     const createdAt = new Date().toISOString();
     try {
-        const stmt = db.prepare(`
-      INSERT INTO orders (id, customerName, customerEmail, customerPhone, address, total, items, createdAt)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-        stmt.run(id, customerName, customerEmail, customerPhone, address, total, JSON.stringify(items), createdAt);
+        const { error } = await supabase
+            .from('orders')
+            .insert([{
+                id,
+                customername: customerName,
+                customeremail: customerEmail,
+                customerphone: customerPhone,
+                address,
+                total,
+                items,
+                createdat: createdAt,
+                status: 'pending'
+            }]);
+
+        if (error) throw error;
+        
         res.status(201).json({ success: true, orderId: id });
     } catch (error) {
+        console.error('[Supabase Error] Create Order:', error);
         res.status(500).json({ error: error.message });
     }
 });
 
-app.get('/api/orders', (req, res) => {
+app.get('/api/orders', async (req, res) => {
     try {
-        const orders = db.prepare('SELECT * FROM orders ORDER BY createdAt DESC').all();
+        const { data: orders, error } = await supabase
+            .from('orders')
+            .select('*')
+            .order('createdat', { ascending: false });
+
+        if (error) throw error;
+
         const parsedOrders = orders.map(o => ({
             ...o,
-            items: JSON.parse(o.items)
+            customerName: o.customername,
+            customerEmail: o.customeremail,
+            customerPhone: o.customerphone,
+            createdAt: o.createdat
         }));
         res.json(parsedOrders);
     } catch (error) {
+        console.error('[Supabase Error] Get Orders:', error);
         res.status(500).json({ error: error.message });
     }
 });

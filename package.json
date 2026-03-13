@@ -15,16 +15,15 @@
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
     "@supabase/supabase-js": "^2.90.1",
+    "axios": "^1.7.9",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^4.21.2",
     "firebase": "^12.7.0",
     "html2canvas": "^1.4.1",
     "lucide-react": "^0.562.0",
     "react": "^19.2.3",
-    "react-dom": "^19.2.3",
-    "express": "^4.21.2",
-    "cors": "^2.8.5",
-    "axios": "^1.7.9",
-    "better-sqlite3": "^11.8.1",
-    "dotenv": "^17.2.3"
+    "react-dom": "^19.2.3"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
