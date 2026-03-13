@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Menu, Search, ShoppingBag, X, Home, LayoutGrid, Heart, User, ChevronRight } from 'lucide-react';
+import { Menu, Search, ShoppingBag, X, Home, Heart, User, ChevronRight } from 'lucide-react';
 import { ViewMode } from '../types';
 
 interface NavbarProps {
@@ -15,7 +15,6 @@ const Navbar: React.FC<NavbarProps> = ({ onNavigate, activeView, cartCount, favo
 
   const navItems = [
     { label: 'Anasayfa', view: ViewMode.HOME, icon: <Home size={18} /> },
-    { label: 'Yapay Zeka Deneme', view: ViewMode.TRIAL_ROOM, icon: <LayoutGrid size={18} /> },
     { label: 'Favorilerim', view: ViewMode.FAVORITES, icon: <Heart size={18} />, count: favoritesCount },
     { label: 'Yönetim Paneli', view: ViewMode.ADMIN, icon: <User size={18} /> },
     { label: 'Sepetim', view: ViewMode.CART, icon: <ShoppingBag size={18} />, count: cartCount },
@@ -44,14 +43,6 @@ const Navbar: React.FC<NavbarProps> = ({ onNavigate, activeView, cartCount, favo
         </h2>
 
         <div className="flex items-center justify-end gap-1 md:gap-3">
-          <button
-            onClick={() => handleNavigate(ViewMode.TRIAL_ROOM)}
-            className={`hidden sm:flex size-9 md:size-10 shrink-0 items-center justify-center transition-all cursor-pointer ${activeView === ViewMode.TRIAL_ROOM ? 'text-orange-600' : 'text-black dark:text-white hover:text-orange-600'}`}
-            title="YZ Deneme"
-          >
-            <LayoutGrid size={18} className="md:w-[20px] md:h-[20px]" strokeWidth={2.5} />
-          </button>
-          
           <button
             onClick={() => handleNavigate(ViewMode.FAVORITES)}
             className={`hidden sm:flex size-9 md:size-10 shrink-0 items-center justify-center transition-all cursor-pointer relative ${activeView === ViewMode.FAVORITES ? 'text-orange-600' : 'text-black dark:text-white hover:text-orange-600'}`}

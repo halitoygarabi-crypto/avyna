@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Home, LayoutGrid, Heart, ShoppingBag } from 'lucide-react';
+import { Home, Package, Heart, ShoppingBag } from 'lucide-react';
 import { ViewMode } from '../types';
 
 interface BottomNavProps {
@@ -22,11 +22,11 @@ const BottomNav: React.FC<BottomNavProps> = ({ activeView, onNavigate, cartCount
         </button>
 
         <button
-          onClick={() => onNavigate(ViewMode.TRIAL_ROOM)}
-          className={`flex flex-col items-center justify-center w-full h-full space-y-1 transition-all ${activeView === ViewMode.TRIAL_ROOM ? 'text-orange-600' : 'text-gray-400'}`}
+          onClick={() => onNavigate(ViewMode.HOME)}
+          className={`flex flex-col items-center justify-center w-full h-full space-y-1 transition-all ${activeView === ViewMode.HOME ? 'text-orange-600' : 'text-gray-400'}`}
         >
-          <LayoutGrid size={22} strokeWidth={activeView === ViewMode.TRIAL_ROOM ? 3 : 2} />
-          <span className="text-[9px] font-black uppercase tracking-[0.2em]">Deneme</span>
+          <Package size={22} strokeWidth={activeView === ViewMode.HOME ? 3 : 2} />
+          <span className="text-[9px] font-black uppercase tracking-[0.2em]">Ürünler</span>
         </button>
 
         <button

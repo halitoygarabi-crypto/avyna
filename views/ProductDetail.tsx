@@ -272,23 +272,7 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ product, onBack, onAddToC
           </button>
         </div>
       </div>
-      {/* URL Bar - Shareable Link */}
-      <div className="bg-gray-50 dark:bg-surface-dark border-b border-black/5 dark:border-white/5 px-4 md:px-6 py-2 flex items-center gap-3">
-        <Link2 size={14} className="text-gray-400 flex-shrink-0" />
-        <span className="text-[8px] md:text-[9px] font-mono text-gray-500 truncate flex-1">
-          {getProductUrl(selectedColor)}
-        </span>
-        <button
-          onClick={handleShare}
-          className={`text-[8px] font-black uppercase tracking-widest px-3 py-1 transition-all flex-shrink-0 ${
-            linkCopied 
-              ? 'text-green-600 bg-green-50' 
-              : 'text-orange-600 hover:bg-orange-50'
-          }`}
-        >
-          {linkCopied ? '✓ Kopyalandı' : 'Kopyala'}
-        </button>
-      </div>
+
 
       <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-12 mt-8 md:mt-12">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-16 items-start">
@@ -388,6 +372,73 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ product, onBack, onAddToC
                 </div>
               )}
             </div>
+
+            {/* Color Options Display - Moved here for better UX and mobile compatibility */}
+            {product.colors && product.colors.length > 0 && (
+              <div className="border-t border-black/5 pt-6 mt-4">
+                <h3 className="text-[10px] md:text-xs font-black uppercase tracking-widest mb-4">Mevcut Renk Seçenekleri</h3>
+                <div className="flex flex-wrap gap-x-5 gap-y-6">
+                  {product.colors.map((color, i) => (
+                    <div 
+                      key={i} 
+                      className={`flex flex-col items-center gap-2.5 group cursor-pointer transition-all ${
+                        selectedColor?.name === color.name ? 'scale-105' : ''
+                      }`}
+                      onClick={() => {
+                        if (selectedColor?.name === color.name) {
+                          setSelectedColor(null);
+                          setActiveImage(product.images?.[0] || '');
+                          updateUrlForColor(null);
+                        } else {
+                          setSelectedColor(color);
+                          if (color.images && color.images.length > 0) {
+                            setActiveImage(color.images[0]);
+                          }
+                          updateUrlForColor(color);
+                        }
+                      }}
+                    >
+                      <div 
+                        className={`size-10 md:size-12 rounded-full border-2 shadow-sm p-0.5 transition-all group-hover:scale-110 ${
+                          selectedColor?.name === color.name 
+                            ? 'border-orange-600 ring-4 ring-orange-600/20' 
+                            : 'border-black/5 dark:border-white/10'
+                        }`}
+                        style={{ backgroundColor: color.hex }}
+                      />
+                      <div className="text-center">
+                        <p className={`text-[8px] md:text-[9px] font-black uppercase tracking-widest transition-colors leading-tight ${
+                          selectedColor?.name === color.name ? 'text-orange-600' : 'text-gray-400 group-hover:text-black dark:group-hover:text-white'
+                        }`}>{color.name}</p>
+                        {color.images && color.images.length > 0 && (
+                          <p className="text-[7px] uppercase tracking-tighter text-orange-600/70 font-bold mt-0.5">
+                            {color.images.length} GÖRSEL
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {selectedColor && (
+                  <div className="mt-3 flex items-center gap-2 px-3 py-2 bg-orange-50 dark:bg-orange-900/10 border border-orange-200">
+                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: selectedColor.hex }} />
+                    <span className="text-[8px] font-black uppercase tracking-widest text-orange-600">
+                      {selectedColor.name} seçili
+                    </span>
+                    <button
+                      onClick={() => {
+                        setSelectedColor(null);
+                        setActiveImage(product.images?.[0] || '');
+                        updateUrlForColor(null);
+                      }}
+                      className="ml-auto text-[8px] font-black uppercase tracking-widest text-gray-400 hover:text-black"
+                    >
+                      Temizle
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Product Description Section */}
@@ -472,70 +523,7 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ product, onBack, onAddToC
                 </div>
               )}
 
-              {/* Color Options Display */}
-              {product.colors && product.colors.length > 0 && (
-                <div className="mb-6 md:mb-8 border-t border-black/5 pt-6 md:pt-8">
-                  <h3 className="text-[10px] md:text-xs font-black uppercase tracking-widest mb-4">Mevcut Renk Seçenekleri</h3>
-                  <div className="flex flex-wrap gap-4">
-                    {product.colors.map((color, i) => (
-                      <div 
-                        key={i} 
-                        className={`flex flex-col items-center gap-2 group cursor-pointer transition-all ${
-                          selectedColor?.name === color.name ? 'scale-110' : ''
-                        }`}
-                        onClick={() => {
-                          if (selectedColor?.name === color.name) {
-                            setSelectedColor(null);
-                            setActiveImage(product.images?.[0] || '');
-                            updateUrlForColor(null);
-                          } else {
-                            setSelectedColor(color);
-                            if (color.images && color.images.length > 0) {
-                              setActiveImage(color.images[0]);
-                            }
-                            updateUrlForColor(color);
-                          }
-                        }}
-                      >
-                        <div 
-                          className={`size-8 md:size-10 rounded-full border-2 shadow-sm p-0.5 transition-all group-hover:scale-110 ${
-                            selectedColor?.name === color.name 
-                              ? 'border-orange-600 ring-2 ring-orange-600/30' 
-                              : 'border-black/5'
-                          }`}
-                          style={{ backgroundColor: color.hex }}
-                        />
-                        <span className={`text-[7px] md:text-[8px] font-black uppercase tracking-widest transition-colors ${
-                          selectedColor?.name === color.name ? 'text-orange-600' : 'text-gray-400 group-hover:text-black'
-                        }`}>{color.name}</span>
-                        {color.images && color.images.length > 0 && (
-                          <span className="text-[6px] uppercase tracking-widest text-orange-600 font-bold">
-                            {color.images.length} Görsel
-                          </span>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                  {selectedColor && (
-                    <div className="mt-3 flex items-center gap-2 px-3 py-2 bg-orange-50 dark:bg-orange-900/10 border border-orange-200">
-                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: selectedColor.hex }} />
-                      <span className="text-[8px] font-black uppercase tracking-widest text-orange-600">
-                        {selectedColor.name} seçili
-                      </span>
-                      <button
-                        onClick={() => {
-                          setSelectedColor(null);
-                          setActiveImage(product.images?.[0] || '');
-                          updateUrlForColor(null);
-                        }}
-                        className="ml-auto text-[8px] font-black uppercase tracking-widest text-gray-400 hover:text-black"
-                      >
-                        Temizle
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
+
 
               {/* Fabric Properties Display */}
               {product.fabricProperties && (
@@ -579,18 +567,7 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ product, onBack, onAddToC
                 </div>
               )}
 
-              {/* Active Color Indicator */}
-              {(() => {
-                const effectiveColor = selectedColor || (product.colors?.find(c => c.images?.includes(activeImage)));
-                return effectiveColor ? (
-                  <div className="flex items-center gap-2 mb-3 px-4 py-2.5 bg-orange-50 dark:bg-orange-900/10 border border-orange-200 dark:border-orange-800">
-                    <div className="size-4 rounded-full border-2 border-white shadow-md" style={{ backgroundColor: effectiveColor.hex }} />
-                    <span className="text-[9px] font-black uppercase tracking-widest text-orange-600">
-                      {effectiveColor.name} rengi ile sepete eklenecek
-                    </span>
-                  </div>
-                ) : null;
-              })()}
+
 
               <button
                 onClick={handleAddToCart}
