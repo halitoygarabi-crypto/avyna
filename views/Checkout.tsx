@@ -23,7 +23,7 @@ const Checkout: React.FC<CheckoutProps> = ({ cart, onNavigate, onClearCart }) =>
     const [city, setCity] = useState('');
     const [phone, setPhone] = useState('');
 
-    const subtotal = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
+    const subtotal = cart.reduce((sum, item) => sum + (item.product.discountPrice ?? item.product.price) * item.quantity, 0);
     const total = subtotal; // No shipping fee
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -243,7 +243,7 @@ const Checkout: React.FC<CheckoutProps> = ({ cart, onNavigate, onClearCart }) =>
                                                 <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest mt-1">RENK: {item.selectedColor.name}</p>
                                             )}
                                             <p className="text-[9px] text-gray-400 font-bold uppercase tracking-widest mt-1">ADET: {item.quantity}</p>
-                                            <p className="text-xs font-black text-orange-600 mt-2">₺{(item.product.price * item.quantity).toLocaleString()}</p>
+                                            <p className="text-xs font-black text-orange-600 mt-2">₺{((item.product.discountPrice ?? item.product.price) * item.quantity).toLocaleString()}</p>
                                         </div>
                                     </div>
                                 ))}
